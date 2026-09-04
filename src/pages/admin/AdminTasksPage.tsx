@@ -17,6 +17,7 @@ import {
   ListTodo,
   Search,
   FolderOpen,
+  Users,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import type { TaskPriority, UserGroup, SubtaskItem } from '@/types/index'
@@ -63,6 +64,7 @@ export const AdminTasksPage: React.FC = () => {
   const [dueDate, setDueDate] = useState('')
   const [priority, setPriority] = useState<TaskPriority>('normal')
   const [driveFolderUrl, setDriveFolderUrl] = useState('https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i')
+  const [groupSearchQuery, setGroupSearchQuery] = useState('')
   const [subtasks, setSubtasks] = useState<{ id: string; title: string }[]>([])
   const [newSubtaskInput, setNewSubtaskInput] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -139,7 +141,7 @@ export const AdminTasksPage: React.FC = () => {
     }
 
     if (assignedRole === 'group' && !targetGroupId) {
-      setFormError('กรุณาเลือกกลุ่มสาระการเรียนรู้ที่ต้องการมอบหมาย')
+      setFormError('กรุณาเลือกกลุ่มสาระการเรียนรู้ที่ต้องการมอบหมาย หรือเลือกส่งทุกกลุ่ม')
       return
     }
 
@@ -148,13 +150,28 @@ export const AdminTasksPage: React.FC = () => {
       return
     }
 
+    // Confirmation dialog (ข้อ 5)
+    const targetLabel =
+      assignedRole === 'all' || targetGroupId === 'all_groups'
+        ? 'ครูทุกคน (ทั้งโรงเรียน)'
+        : assignedRole === 'group'
+        ? `กลุ่มสาระฯ: ${groups.find((g) => g.id === targetGroupId)?.name || 'ที่เลือก'}`
+        : `คุณครู ${selectedTeacherIds.length} ท่าน`
+
+    if (!window.confirm(`ยืนยันการมอบหมายภาระงาน?\n\nหัวข้องาน: "${title}"\nเป้าหมาย: ${targetLabel}`)) {
+      return
+    }
+
+    const effectiveRole = assignedRole === 'group' && targetGroupId === 'all_groups' ? 'all' : assignedRole
+    const effectiveGroupId = targetGroupId === 'all_groups' ? null : targetGroupId
+
     setIsSubmitting(true)
     const res = await createTask({
       title,
       description,
-      assigned_to_role: assignedRole,
-      target_group_id: assignedRole === 'group' ? targetGroupId : null,
-      specific_teacher_ids: assignedRole === 'specific' ? selectedTeacherIds : undefined,
+      assigned_to_role: effectiveRole,
+      target_group_id: effectiveRole === 'group' ? effectiveGroupId : null,
+      specific_teacher_ids: effectiveRole === 'specific' ? selectedTeacherIds : undefined,
       due_date: dueDate ? new Date(dueDate).toISOString() : null,
       priority,
       created_by: user.id,
@@ -599,24 +616,74 @@ export const AdminTasksPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Group Selector */}
+              {/* Group Selector (ข้อ 2: สะดวก รวดเร็ว มีส่งทุกกลุ่ม และช่องค้นหา) */}
               {assignedRole === 'group' && (
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    เลือกกลุ่มสาระการเรียนรู้เป้าหมาย
-                  </label>
-                  <select
-                    value={targetGroupId}
-                    onChange={(e) => setTargetGroupId(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:bg-white focus:border-blue-600 focus:outline-none"
-                  >
-                    <option value="">-- เลือกกลุ่มสาระฯ --</option>
-                    {groups.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-medium text-slate-700">
+                      เลือกกลุ่มสาระการเรียนรู้เป้าหมาย
+                    </label>
+                    <span className="text-[11px] text-emerald-700 font-medium">
+                      {groups.length} กลุ่มสาระฯ
+                    </span>
+                  </div>
+
+                  {/* Search box for groups */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={groupSearchQuery}
+                      onChange={(e) => setGroupSearchQuery(e.target.value)}
+                      placeholder="พิมพ์ค้นหากลุ่มสาระฯ เช่น วิทย์, คณิต, ภาษา..."
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Group Choices Box */}
+                  <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-1.5 space-y-1">
+                    {/* All Groups Option */}
+                    <div
+                      onClick={() => setTargetGroupId('all_groups')}
+                      className={`flex items-center justify-between p-2.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                        targetGroupId === 'all_groups'
+                          ? 'bg-emerald-100 text-emerald-950 font-semibold border border-emerald-300'
+                          : 'hover:bg-slate-200/60 text-slate-800'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Users className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>🌟 ส่งไปยังทุกกลุ่มสาระฯ (ทั้งโรงเรียน)</span>
+                      </span>
+                      <span className="rounded-full bg-emerald-200/80 px-2 py-0.5 text-[10px] text-emerald-900 font-semibold">
+                        {teachers.length} คน
+                      </span>
+                    </div>
+
+                    {/* Filtered Individual Groups */}
+                    {groups
+                      .filter((g) => !groupSearchQuery.trim() || g.name.toLowerCase().includes(groupSearchQuery.toLowerCase()))
+                      .map((g) => {
+                        const count = teachers.filter((t) => t.group_id === g.id).length
+                        const isSelected = targetGroupId === g.id
+                        return (
+                          <div
+                            key={g.id}
+                            onClick={() => setTargetGroupId(g.id)}
+                            className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-colors ${
+                              isSelected
+                                ? 'bg-emerald-100 text-emerald-950 font-semibold border border-emerald-300'
+                                : 'hover:bg-slate-200/60 text-slate-800'
+                            }`}
+                          >
+                            <span>{g.name}</span>
+                            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-600">
+                              {count} คน
+                            </span>
+                          </div>
+                        )
+                      })}
+                  </div>
                 </div>
               )}
 

@@ -27,6 +27,7 @@ export async function fetchAccessibleChannels(): Promise<{
     const { data, error } = await supabase
       .from('chat_channels')
       .select('*, user_groups(name)')
+      .neq('type', 'announcement')
       .order('type', { ascending: false })
       .order('name', { ascending: true })
 

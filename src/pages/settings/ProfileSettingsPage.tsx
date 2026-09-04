@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   User,
   Shield,
@@ -15,6 +15,7 @@ import {
   Sparkles,
   Camera,
   Check,
+  Upload,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/services/supabase'
@@ -28,6 +29,9 @@ export const ProfileSettingsPage: React.FC = () => {
   const [editName, setEditName] = useState('')
   const [editAvatarUrl, setEditAvatarUrl] = useState('')
   const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Password Change State
   const [newPassword, setNewPassword] = useState('')
@@ -45,6 +49,44 @@ export const ProfileSettingsPage: React.FC = () => {
     }
   }, [profile])
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user?.id) return
+
+    if (file.size > 3 * 1024 * 1024) {
+      setUploadError('ขนาดไฟล์ต้องไม่เกิน 3MB')
+      return
+    }
+
+    setUploadError(null)
+    setIsUploadingAvatar(true)
+
+    try {
+      const fileExt = file.name.split('.').pop() || 'jpg'
+      const filePath = `${user.id}_${Date.now()}.${fileExt}`
+
+      const { error: uploadErr } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadErr) {
+        throw uploadErr
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+      setEditAvatarUrl(publicUrlData.publicUrl)
+      setFeedback({ type: 'success', message: 'อัปโหลดรูปภาพสำเร็จแล้ว (อย่าลืมกดบันทึกการแก้ไขโปรไฟล์)' })
+    } catch (err: unknown) {
+      console.error('Avatar upload error:', err)
+      setUploadError(err instanceof Error ? err.message : 'ไม่สามารถอัปโหลดรูปภาพได้')
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user?.id) return
@@ -53,6 +95,11 @@ export const ProfileSettingsPage: React.FC = () => {
     const clean = editName.trim()
     if (!clean) {
       setFeedback({ type: 'error', message: 'กรุณากรอกชื่อ-นามสกุล' })
+      return
+    }
+
+    // Confirmation Dialog (ข้อ 5)
+    if (!window.confirm(`ยืนยันการบันทึกการเปลี่ยนแปลงข้อมูลโปรไฟล์ของคุณ?`)) {
       return
     }
 
@@ -282,8 +329,41 @@ export const ProfileSettingsPage: React.FC = () => {
                   })}
                 </div>
 
+                {/* อัปโหลดรูปโปรไฟล์จากเครื่อง (ข้อ 4) */}
+                <div className="mb-3 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 p-3">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept="image/png,image/jpeg,image/webp,image/jpg"
+                    className="hidden"
+                    id="avatar-upload-file-input"
+                  />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingAvatar}
+                      className="inline-flex items-center gap-2 rounded-xl bg-white border border-emerald-300 px-3.5 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100/70 transition-colors shadow-2xs cursor-pointer self-start sm:self-auto"
+                    >
+                      {isUploadingAvatar ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                      ) : (
+                        <Upload className="h-4 w-4 text-emerald-600" />
+                      )}
+                      <span>{isUploadingAvatar ? 'กำลังอัปโหลด...' : '📷 เลือกรูปภาพจากเครื่อง'}</span>
+                    </button>
+                    <span className="text-[11px] text-slate-500">
+                      รองรับ JPG, PNG, WEBP (ไม่เกิน 3MB)
+                    </span>
+                  </div>
+                  {uploadError && (
+                    <p className="mt-2 text-xs text-red-600 font-medium">⚠️ {uploadError}</p>
+                  )}
+                </div>
+
                 <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mb-1">
-                  <Sparkles className="h-3 w-3 text-purple-500" />
+                  <Sparkles className="h-3 w-3 text-emerald-500" />
                   <span>หรือใส่ URL รูปภาพโปรไฟล์ที่คุณต้องการ:</span>
                 </div>
                 <input
@@ -291,7 +371,7 @@ export const ProfileSettingsPage: React.FC = () => {
                   value={editAvatarUrl}
                   onChange={(e) => setEditAvatarUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:border-purple-500 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 

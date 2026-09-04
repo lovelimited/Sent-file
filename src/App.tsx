@@ -31,6 +31,12 @@ const ActivityLogsPage = lazy(() =>
 const ProfileSettingsPage = lazy(() =>
   import('@/pages/settings/ProfileSettingsPage').then((m) => ({ default: m.ProfileSettingsPage }))
 )
+const AnnouncementFeedPage = lazy(() =>
+  import('@/pages/feed/AnnouncementFeedPage').then((m) => ({ default: m.AnnouncementFeedPage }))
+)
+const TaskOverviewPage = lazy(() =>
+  import('@/pages/admin/TaskOverviewPage').then((m) => ({ default: m.TaskOverviewPage }))
+)
 
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center py-20">
@@ -98,7 +104,25 @@ export const App: React.FC = () => {
                 }
               />
 
+              {/* Announcements Feed Route */}
+              <Route
+                path="announcements"
+                element={
+                  <ProtectedRoute>
+                    <AnnouncementFeedPage />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Admin-Only Protected Routes */}
+              <Route
+                path="admin/overview"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <TaskOverviewPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="admin/tasks"
                 element={

@@ -14,6 +14,8 @@ import {
   Settings,
   HelpCircle,
   ChevronDown,
+  Megaphone,
+  TableProperties,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
@@ -45,6 +47,7 @@ export const Navbar: React.FC = () => {
   }
 
   const isAdminSubpageActive =
+    location.pathname === '/admin/overview' ||
     location.pathname === '/admin/users' ||
     location.pathname === '/admin/groups' ||
     location.pathname === '/admin/logs'
@@ -82,11 +85,24 @@ export const Navbar: React.FC = () => {
                   to="/"
                   className={`rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
                     location.pathname === '/'
-                      ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
+                      ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
                   หน้าหลัก
+                </Link>
+
+                {/* Announcement Feed Link */}
+                <Link
+                  to="/announcements"
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                    location.pathname === '/announcements'
+                      ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <Megaphone className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>ข่าวประกาศ</span>
                 </Link>
 
                 {/* Teacher Task link */}
@@ -95,7 +111,7 @@ export const Navbar: React.FC = () => {
                     to="/tasks"
                     className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
                       location.pathname === '/tasks'
-                        ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
+                        ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                     }`}
                   >
@@ -110,11 +126,11 @@ export const Navbar: React.FC = () => {
                     to="/admin/tasks"
                     className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
                       location.pathname === '/admin/tasks'
-                        ? 'bg-purple-50 text-purple-700 font-semibold border border-purple-200/60'
+                        ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                     }`}
                   >
-                    <ClipboardList className="h-3.5 w-3.5 text-purple-600" />
+                    <ClipboardList className="h-3.5 w-3.5 text-emerald-600" />
                     <span>จัดการภาระงาน</span>
                   </Link>
                 )}
@@ -124,7 +140,7 @@ export const Navbar: React.FC = () => {
                   to="/chat"
                   className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
                     location.pathname === '/chat'
-                      ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
+                      ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
@@ -137,7 +153,7 @@ export const Navbar: React.FC = () => {
                   to="/drive"
                   className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
                     location.pathname === '/drive'
-                      ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
+                      ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
@@ -153,27 +169,43 @@ export const Navbar: React.FC = () => {
                       onClick={() => setIsAdminDropdownOpen(!isAdminDropdownOpen)}
                       className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors cursor-pointer whitespace-nowrap ${
                         isAdminSubpageActive
-                          ? 'bg-purple-50 text-purple-700 font-semibold border border-purple-200/60'
+                          ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      <Shield className="h-3.5 w-3.5 text-purple-600" />
+                      <Shield className="h-3.5 w-3.5 text-emerald-600" />
                       <span>การจัดการระบบ</span>
                       <ChevronDown className={`h-3 w-3 transition-transform ${isAdminDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
 
                     {isAdminDropdownOpen && (
-                      <div className="absolute right-0 mt-1 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="absolute right-0 mt-1 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                        <Link
+                          to="/admin/overview"
+                          onClick={() => setIsAdminDropdownOpen(false)}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors ${
+                            location.pathname === '/admin/overview'
+                              ? 'bg-emerald-50 text-emerald-800 font-semibold'
+                              : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <TableProperties className="h-4 w-4 text-emerald-600" />
+                          <div>
+                            <p className="font-medium leading-tight">ตารางภาพรวมการส่งงาน</p>
+                            <p className="text-[10px] text-slate-400">สรุปสถานะครูทุกคน & พิมพ์ PDF</p>
+                          </div>
+                        </Link>
+
                         <Link
                           to="/admin/users"
                           onClick={() => setIsAdminDropdownOpen(false)}
                           className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors ${
                             location.pathname === '/admin/users'
-                              ? 'bg-purple-50 text-purple-700 font-semibold'
+                              ? 'bg-emerald-50 text-emerald-800 font-semibold'
                               : 'text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          <Users className="h-4 w-4 text-purple-600" />
+                          <Users className="h-4 w-4 text-emerald-600" />
                           <div>
                             <p className="font-medium leading-tight">จัดการบุคลากรครู</p>
                             <p className="text-[10px] text-slate-400">แก้ไขข้อมูลและสถานะครู</p>
@@ -185,11 +217,11 @@ export const Navbar: React.FC = () => {
                           onClick={() => setIsAdminDropdownOpen(false)}
                           className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors ${
                             location.pathname === '/admin/groups'
-                              ? 'bg-purple-50 text-purple-700 font-semibold'
+                              ? 'bg-emerald-50 text-emerald-800 font-semibold'
                               : 'text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          <FolderTree className="h-4 w-4 text-purple-600" />
+                          <FolderTree className="h-4 w-4 text-emerald-600" />
                           <div>
                             <p className="font-medium leading-tight">กลุ่มสาระการเรียนรู้</p>
                             <p className="text-[10px] text-slate-400">โครงสร้างกลุ่มและฝ่ายงาน</p>
@@ -201,11 +233,11 @@ export const Navbar: React.FC = () => {
                           onClick={() => setIsAdminDropdownOpen(false)}
                           className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors ${
                             location.pathname === '/admin/logs'
-                              ? 'bg-purple-50 text-purple-700 font-semibold'
+                              ? 'bg-emerald-50 text-emerald-800 font-semibold'
                               : 'text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          <FileText className="h-4 w-4 text-purple-600" />
+                          <FileText className="h-4 w-4 text-emerald-600" />
                           <div>
                             <p className="font-medium leading-tight">ประวัติกิจกรรมระบบ</p>
                             <p className="text-[10px] text-slate-400">ตรวจสอบ Audit Trail</p>
@@ -311,35 +343,45 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile Sub-Navigation */}
       {isAuthenticated && (
-        <div className="md:hidden flex items-center justify-around border-t border-slate-200 bg-slate-50 px-2 py-2 text-[11px]">
+        <div className="md:hidden flex items-center justify-around border-t border-emerald-100 bg-slate-50 px-2 py-2 text-[11px] overflow-x-auto">
           <Link
             to="/"
-            className={`px-2.5 py-1 rounded-md ${
-              location.pathname === '/' ? 'text-blue-700 font-semibold bg-blue-50' : 'text-slate-600'
+            className={`px-2 py-1 rounded-md whitespace-nowrap ${
+              location.pathname === '/' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
             }`}
           >
             หน้าหลัก
           </Link>
           <Link
-            to="/tasks"
-            className={`px-2.5 py-1 rounded-md ${
-              location.pathname === '/tasks' ? 'text-blue-700 font-semibold bg-blue-50' : 'text-slate-600'
+            to="/announcements"
+            className={`px-2 py-1 rounded-md whitespace-nowrap ${
+              location.pathname === '/announcements' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
             }`}
           >
-            งานของฉัน
+            ข่าวสาร
           </Link>
+          {!isAdmin && (
+            <Link
+              to="/tasks"
+              className={`px-2 py-1 rounded-md whitespace-nowrap ${
+                location.pathname === '/tasks' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
+              }`}
+            >
+              งานของฉัน
+            </Link>
+          )}
           <Link
             to="/chat"
-            className={`px-2.5 py-1 rounded-md ${
-              location.pathname === '/chat' ? 'text-blue-700 font-semibold bg-blue-50' : 'text-slate-600'
+            className={`px-2 py-1 rounded-md whitespace-nowrap ${
+              location.pathname === '/chat' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
             }`}
           >
             แชท
           </Link>
           <Link
             to="/drive"
-            className={`px-2.5 py-1 rounded-md ${
-              location.pathname === '/drive' ? 'text-blue-700 font-semibold bg-blue-50' : 'text-slate-600'
+            className={`px-2 py-1 rounded-md whitespace-nowrap ${
+              location.pathname === '/drive' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
             }`}
           >
             Drive
@@ -347,17 +389,25 @@ export const Navbar: React.FC = () => {
           {isAdmin && (
             <>
               <Link
+                to="/admin/overview"
+                className={`px-2 py-1 rounded-md whitespace-nowrap ${
+                  location.pathname === '/admin/overview' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
+                }`}
+              >
+                ภาพรวม
+              </Link>
+              <Link
                 to="/admin/tasks"
-                className={`px-2.5 py-1 rounded-md ${
-                  location.pathname === '/admin/tasks' ? 'text-purple-700 font-semibold bg-purple-50' : 'text-slate-600'
+                className={`px-2 py-1 rounded-md whitespace-nowrap ${
+                  location.pathname === '/admin/tasks' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
                 }`}
               >
                 จัดการงาน
               </Link>
               <Link
                 to="/admin/users"
-                className={`px-2.5 py-1 rounded-md ${
-                  location.pathname === '/admin/users' ? 'text-purple-700 font-semibold bg-purple-50' : 'text-slate-600'
+                className={`px-2 py-1 rounded-md whitespace-nowrap ${
+                  location.pathname === '/admin/users' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
                 }`}
               >
                 จัดการครู

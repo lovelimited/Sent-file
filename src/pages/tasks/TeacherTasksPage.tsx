@@ -24,7 +24,7 @@ import { PrintableTaskSlip } from '@/components/tasks/PrintableTaskSlip'
 import { supabase } from '@/services/supabase'
 
 export const TeacherTasksPage: React.FC = () => {
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   const [tasks, setTasks] = useState<TeacherTaskItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'pending' | 'submitted' | 'approved' | 'all'>('pending')
@@ -197,12 +197,26 @@ export const TeacherTasksPage: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
-          <CheckSquare className="h-6 w-6 text-blue-600" />
+          <CheckSquare className="h-6 w-6 text-emerald-600" />
           <span>ภาระงานของฉัน (My Tasks)</span>
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-1">
           ตรวจสอบภาระงานที่ได้รับมอบหมาย ติดตามกำหนดส่ง และอัปโหลดส่งผลงานออนไลน์
         </p>
+
+        {isAdmin && (
+          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 flex items-center justify-between text-xs text-emerald-800">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">ℹ️ คุณกำลังดูในฐานะผู้ดูแลระบบ (โหมดดูอย่างเดียว ไม่มีปุ่มส่งงาน)</span>
+            </div>
+            <a
+              href="/admin/tasks"
+              className="font-semibold underline hover:text-emerald-950 ml-2 whitespace-nowrap"
+            >
+              ไปที่หน้าจัดการภาระงาน & ตรวจงาน ↗
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Feedback Toast */}
@@ -431,13 +445,19 @@ export const TeacherTasksPage: React.FC = () => {
                       </button>
                     )}
 
-                    <button
-                      onClick={() => handleOpenSubmitModal(item)}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
-                    >
-                      <Send className="h-3 w-3" />
-                      <span>{item.status === 'pending' ? 'ส่งงาน' : 'ดู/แก้ไขงาน'}</span>
-                    </button>
+                    {isAdmin ? (
+                      <span className="inline-flex items-center gap-1 rounded-xl bg-slate-100 border border-slate-200 px-3 py-1.5 text-xs text-slate-500 font-medium">
+                        โหมดผู้ดูแล (ดูได้อย่างเดียว)
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleOpenSubmitModal(item)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+                      >
+                        <Send className="h-3 w-3" />
+                        <span>{item.status === 'pending' ? 'ส่งงาน' : 'ดู/แก้ไขงาน'}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

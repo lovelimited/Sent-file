@@ -421,6 +421,108 @@ export interface Database {
           },
         ]
       }
+      announcements: {
+        Row: {
+          id: string
+          author_id: string
+          content: string
+          image_url: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          author_id: string
+          content: string
+          image_url?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          author_id?: string
+          content?: string
+          image_url?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'announcements_author_id_fkey'
+            columns: ['author_id']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      announcement_likes: {
+        Row: {
+          id: string
+          announcement_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          announcement_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          announcement_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'announcement_likes_announcement_id_fkey'
+            columns: ['announcement_id']
+            referencedRelation: 'announcements'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'announcement_likes_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      announcement_comments: {
+        Row: {
+          id: string
+          announcement_id: string
+          author_id: string
+          content: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          announcement_id: string
+          author_id: string
+          content: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          announcement_id?: string
+          author_id?: string
+          content?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'announcement_comments_announcement_id_fkey'
+            columns: ['announcement_id']
+            referencedRelation: 'announcements'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'announcement_comments_author_id_fkey'
+            columns: ['author_id']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

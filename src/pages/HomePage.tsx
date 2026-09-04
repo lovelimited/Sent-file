@@ -14,12 +14,14 @@ import {
   Sparkles,
   Wifi,
   WifiOff,
+  Megaphone,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { fetchTeacherTasks, fetchAdminTasks } from '@/services/taskService'
 import { fetchUsers, fetchGroups } from '@/services/userService'
 import { fetchDriveResources } from '@/services/driveService'
 import { useNetworkStatus } from '@/hooks/useNetworkStatus'
+import { AnnouncementFeed } from '@/components/feed/AnnouncementFeed'
 
 export const HomePage: React.FC = () => {
   const { isAuthenticated, profile, role, user, isAdmin } = useAuth()
@@ -196,6 +198,26 @@ export const HomePage: React.FC = () => {
               {adminOpenTasksCount !== null ? `${adminOpenTasksCount} ภาระงาน` : '-'}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Facebook-Style Announcement Feed Section (ข้อ 3) */}
+      {isAuthenticated && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Megaphone className="h-5 w-5 text-emerald-600" />
+              <span>กระดานประกาศข่าวสารฝ่ายบริหาร</span>
+            </h2>
+            <Link
+              to="/announcements"
+              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-1"
+            >
+              <span>ดูประกาศทั้งหมด</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <AnnouncementFeed previewCount={3} />
         </div>
       )}
 

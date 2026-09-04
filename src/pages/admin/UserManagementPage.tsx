@@ -18,6 +18,7 @@ import {
   Eye,
   EyeOff,
   Filter,
+  FileUp,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import type { ProfileWithGroup } from '@/types/auth.types'
@@ -32,6 +33,7 @@ import {
   updateUserProfile,
 } from '@/services/userService'
 import { PRESET_AVATARS, getAvatarUrl } from '@/utils/avatarUtils'
+import { CSVImportModal } from '@/components/admin/CSVImportModal'
 
 export const UserManagementPage: React.FC = () => {
   const { user: currentUser } = useAuth()
@@ -44,6 +46,7 @@ export const UserManagementPage: React.FC = () => {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all')
 
   // Modals state
+  const [isCSVModalOpen, setIsCSVModalOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isResetModalOpen, setIsResetModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -312,13 +315,23 @@ export const UserManagementPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreateModal}
-          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-all cursor-pointer self-start sm:self-auto"
-        >
-          <UserPlus className="h-4 w-4" />
-          <span>เพิ่มคุณครูใหม่</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setIsCSVModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 transition-all cursor-pointer"
+          >
+            <FileUp className="h-4 w-4 text-emerald-600" />
+            <span>นำเข้า CSV</span>
+          </button>
+
+          <button
+            onClick={handleOpenCreateModal}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-all cursor-pointer"
+          >
+            <UserPlus className="h-4 w-4" />
+            <span>เพิ่มคุณครูใหม่</span>
+          </button>
+        </div>
       </div>
 
       {/* Feedback Toast */}
@@ -988,6 +1001,19 @@ export const UserManagementPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* CSV Import Modal (ข้อ 11) */}
+      {isCSVModalOpen && (
+        <CSVImportModal
+          groups={groups}
+          onClose={() => setIsCSVModalOpen(false)}
+          onComplete={() => {
+            setIsCSVModalOpen(false)
+            setFeedback({ type: 'success', message: 'นำเข้าข้อมูลคุณครูเรียบร้อยแล้ว' })
+            loadData()
+          }}
+        />
       )}
     </div>
   )

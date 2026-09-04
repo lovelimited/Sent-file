@@ -22,7 +22,7 @@ import { supabase } from '@/services/supabase'
 import { getAvatarUrl } from '@/utils/avatarUtils'
 
 export const FloatingChatDock: React.FC = () => {
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -342,30 +342,38 @@ export const FloatingChatDock: React.FC = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Footer: Input Form */}
-          <form
-            onSubmit={handleSendMessage}
-            className="p-2.5 bg-white border-t border-slate-200 flex items-center gap-1.5"
-          >
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="พิมพ์ข้อความ..."
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
-            />
-            <button
-              type="submit"
-              disabled={isSending || !newMessage.trim()}
-              className="h-8 w-8 rounded-xl bg-purple-600 text-white flex items-center justify-center hover:bg-purple-700 disabled:opacity-40 transition-colors cursor-pointer shrink-0"
+          {/* Footer: Input Form or Read-Only Notice */}
+          {activeChannel?.type === 'announcement' && !isAdmin ? (
+            <div className="p-2.5 bg-white border-t border-slate-200">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-center text-[11px] text-amber-700 font-medium">
+                📢 ห้องนี้สำหรับอ่านประกาศเท่านั้น
+              </div>
+            </div>
+          ) : (
+            <form
+              onSubmit={handleSendMessage}
+              className="p-2.5 bg-white border-t border-slate-200 flex items-center gap-1.5"
             >
-              {isSending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Send className="h-3.5 w-3.5" />
-              )}
-            </button>
-          </form>
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="พิมพ์ข้อความ..."
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={isSending || !newMessage.trim()}
+                className="h-8 w-8 rounded-xl bg-purple-600 text-white flex items-center justify-center hover:bg-purple-700 disabled:opacity-40 transition-colors cursor-pointer shrink-0"
+              >
+                {isSending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </form>
+          )}
         </div>
       ) : (
         /* Floating Launcher Pill/Button (Collapsed) - Classic Facebook Style */
