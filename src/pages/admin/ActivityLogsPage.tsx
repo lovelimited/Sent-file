@@ -94,11 +94,11 @@ export const ActivityLogsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-            <FileText className="h-6 w-6 text-blue-400" />
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
+            <FileText className="h-6 w-6 text-blue-600" />
             <span>ประวัติกิจกรรมระบบ (Activity Logs)</span>
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-slate-600 mt-1">
             ตรวจสอบ Audit Trail การเข้าสู่ระบบและการดำเนินงานของผู้ดูแลระบบ
           </p>
         </div>
@@ -107,17 +107,17 @@ export const ActivityLogsPage: React.FC = () => {
           <button
             onClick={() => exportActivityLogsToCSV(logs)}
             disabled={isLoading || logs.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/50 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
             title="ดาวน์โหลดบันทึกกิจกรรมระบบเป็นไฟล์ Excel CSV"
           >
-            <Download className="h-3.5 w-3.5 text-blue-400" />
+            <Download className="h-3.5 w-3.5 text-blue-600" />
             <span>ส่งออก CSV</span>
           </button>
 
           <button
             onClick={loadLogs}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-50 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             <span>รีเฟรชข้อมูล</span>
@@ -126,21 +126,21 @@ export const ActivityLogsPage: React.FC = () => {
       </div>
 
       {/* Logs Table */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/30 overflow-hidden">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-2" />
-            <p className="text-xs text-slate-400">กำลังโหลดประวัติกิจกรรม...</p>
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-2" />
+            <p className="text-xs text-slate-500">กำลังโหลดประวัติกิจกรรม...</p>
           </div>
         ) : logs.length === 0 ? (
           <div className="py-16 text-center text-slate-500">
-            <FileText className="h-10 w-10 mx-auto mb-2 text-slate-600" />
-            <p className="text-sm">ยังไม่มีบันทึกกิจกรรมในระบบ</p>
+            <FileText className="h-10 w-10 mx-auto mb-2 text-slate-400" />
+            <p className="text-sm font-medium text-slate-600">ยังไม่มีบันทึกกิจกรรมในระบบ</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="border-b border-slate-800 bg-slate-900/80 text-xs font-medium text-slate-400">
+            <table className="w-full text-left text-sm text-slate-700">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
                 <tr>
                   <th className="px-4 py-3.5">เวลาที่ดำเนินการ</th>
                   <th className="px-4 py-3.5">ผู้ดำเนินการ</th>
@@ -148,38 +148,38 @@ export const ActivityLogsPage: React.FC = () => {
                   <th className="px-4 py-3.5">รายละเอียด</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-100">
                 {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-900/50 transition-colors">
-                    <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
+                  <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5 text-slate-500" />
+                        <Clock className="h-3.5 w-3.5 text-slate-400" />
                         <span>{new Date(log.created_at).toLocaleString('th-TH')}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs whitespace-nowrap">
                       {log.profiles ? (
                         <div className="flex items-center gap-2">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-slate-300 text-[10px] font-bold">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-bold">
                             <User className="h-3 w-3" />
                           </div>
                           <div>
-                            <p className="font-medium text-slate-200">{log.profiles.name}</p>
-                            <p className="text-[10px] text-slate-500">@{log.profiles.username}</p>
+                            <p className="font-semibold text-slate-800">{log.profiles.name}</p>
+                            <p className="text-[10px] text-slate-400">@{log.profiles.username}</p>
                           </div>
                         </div>
                       ) : (
-                        <span className="text-slate-500 italic">ระบบอัตโนมัติ</span>
+                        <span className="text-slate-400 italic">ระบบอัตโนมัติ</span>
                       )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">{renderActionBadge(log.action)}</td>
-                    <td className="px-4 py-3 text-xs text-slate-400 font-mono">
+                    <td className="px-4 py-3 text-xs text-slate-600 font-mono">
                       {log.details ? (
-                        <span className="truncate block max-w-md" title={JSON.stringify(log.details)}>
+                        <span className="truncate block max-w-md bg-slate-50 px-2 py-1 rounded border border-slate-200/60" title={JSON.stringify(log.details)}>
                           {JSON.stringify(log.details)}
                         </span>
                       ) : (
-                        <span className="text-slate-600">-</span>
+                        <span className="text-slate-400">-</span>
                       )}
                     </td>
                   </tr>

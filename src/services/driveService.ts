@@ -15,18 +15,29 @@ export interface CreateDriveResourcePayload {
 }
 
 /**
- * Fetch all drive resources accessible to the user
+ * Fetch drive resources:
+ * Non-admins see only their own resources (created_by === userId).
+ * Admins see all resources.
  */
-export async function fetchDriveResources(): Promise<{
+export async function fetchDriveResources(
+  userId?: string,
+  isAdmin?: boolean
+): Promise<{
   data: DriveResourceWithGroup[] | null
   error: string | null
 }> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('drive_resources')
       .select('*, user_groups(name)')
       .order('category', { ascending: true })
       .order('created_at', { ascending: false })
+
+    if (!isAdmin && userId) {
+      query = query.eq('created_by', userId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       return { data: null, error: error.message }

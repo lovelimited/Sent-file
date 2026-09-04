@@ -150,6 +150,7 @@ export interface Database {
           due_date: string | null
           priority: TaskPriority
           status: TaskStatus
+          subtasks?: Json | null
           created_at: string
           updated_at: string
         }
@@ -163,6 +164,7 @@ export interface Database {
           due_date?: string | null
           priority?: TaskPriority
           status?: TaskStatus
+          subtasks?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -176,6 +178,7 @@ export interface Database {
           due_date?: string | null
           priority?: TaskPriority
           status?: TaskStatus
+          subtasks?: Json | null
           created_at?: string
           updated_at?: string
         }

@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   X,
   BookOpen,
   CheckSquare,
   ClipboardList,
   Smartphone,
-  CheckCircle2,
   Printer,
   Download,
 } from 'lucide-react'
@@ -22,32 +22,37 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
     return null
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+  const modalContent = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-150">
+      <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden my-8 animate-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4 bg-slate-950/70">
-          <div className="flex items-center gap-2.5 text-white">
-            <BookOpen className="h-5 w-5 text-blue-400" />
-            <h2 className="text-base font-bold">คู่มือการใช้งานระบบ School Work Hub</h2>
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-slate-50/80">
+          <div className="flex items-center gap-2.5 text-slate-900">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+              <BookOpen className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold">คู่มือการใช้งานระบบ School Work Hub</h2>
+              <p className="text-[11px] text-slate-500">โรงเรียนสารสาสน์วิเทศราชพฤกษ์</p>
+            </div>
           </div>
 
           <button
             onClick={onClose}
-            className="rounded-xl border border-slate-800 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="rounded-xl border border-slate-200 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex border-b border-slate-800 bg-slate-950/40 px-6 pt-3 gap-2">
+        <div className="flex border-b border-slate-200 bg-slate-50/50 px-6 pt-3 gap-2">
           <button
             onClick={() => setActiveTab('teacher')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer border-b-2 ${
               activeTab === 'teacher'
-                ? 'border-blue-500 text-blue-400 bg-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-blue-600 text-blue-700 bg-white shadow-xs'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <CheckSquare className="h-4 w-4" />
@@ -58,8 +63,8 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
             onClick={() => setActiveTab('admin')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer border-b-2 ${
               activeTab === 'admin'
-                ? 'border-purple-500 text-purple-400 bg-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-purple-600 text-purple-700 bg-white shadow-xs'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <ClipboardList className="h-4 w-4" />
@@ -70,8 +75,8 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
             onClick={() => setActiveTab('pwa')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer border-b-2 ${
               activeTab === 'pwa'
-                ? 'border-emerald-500 text-emerald-400 bg-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-emerald-600 text-emerald-700 bg-white shadow-xs'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Smartphone className="h-4 w-4" />
@@ -80,51 +85,52 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
         </div>
 
         {/* Tab Contents */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto space-y-6 text-xs text-slate-300">
+        <div className="p-6 max-h-[70vh] overflow-y-auto space-y-5 text-xs text-slate-700">
           {/* TEACHER TAB */}
           {activeTab === 'teacher' && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 space-y-2">
-                <div className="flex items-center gap-2 text-blue-400 font-bold text-sm">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-xs text-blue-400">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-blue-700 font-bold text-sm">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-xs text-blue-700 font-bold">
                     1
                   </span>
                   <span>การส่งภาระงานและแผนการสอน</span>
                 </div>
-                <p className="leading-relaxed text-slate-400">
-                  ไปที่เมนู <strong className="text-slate-200">"ภาระงานของฉัน"</strong> เลือกรายการภาระงานที่ต้องการส่ง จากนั้นกดปุ่ม <strong className="text-blue-400">"ส่งงาน"</strong>
+                <p className="leading-relaxed text-slate-600">
+                  ไปที่เมนู <strong className="text-slate-900">"ภาระงานของฉัน"</strong> เลือกรายการภาระงานที่ต้องการส่ง จากนั้นกดปุ่ม <strong className="text-blue-600">"ส่งงาน"</strong>
                 </p>
-                <div className="rounded-lg bg-slate-900 p-2.5 border border-slate-800 text-[11px] text-slate-300 space-y-1">
+                <div className="rounded-lg bg-white p-3 border border-slate-200 text-[11px] text-slate-600 space-y-1.5">
                   <p>• <strong>บันทึกสรุปผลงาน:</strong> กรอกข้อความอธิบายสรุปสั้นๆ เกี่ยวกับผลงาน</p>
-                  <p>• <strong>แนบลิงก์ผลงาน:</strong> วางลิงก์ Google Drive, Google Docs, หรือ Canva ที่เปิดสิทธิ์แชร์แล้ว</p>
+                  <p>• <strong>อัปโหลดลากวางไฟล์:</strong> สามารถลากไฟล์ผลงาน เช่น PDF, Word หรือคลิกเลือกไฟล์เพื่อส่งงานได้ทันที</p>
+                  <p>• <strong>Google Drive โฟลเดอร์รวม:</strong> กดปุ่มเปิดโฟลเดอร์ Google Drive รวมส่งงานของโรงเรียนได้โดยตรง</p>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 space-y-2">
-                <div className="flex items-center gap-2 text-blue-400 font-bold text-sm">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-xs text-blue-400">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-blue-700 font-bold text-sm">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-xs text-blue-700 font-bold">
                     2
                   </span>
                   <span>การตรวจดูผลตรวจและพิมพ์ใบนำส่งงาน</span>
                 </div>
-                <p className="leading-relaxed text-slate-400">
-                  เมื่อส่งงานแล้ว สามารถติดตามผลการตรวจรับได้ในแท็บ <strong className="text-slate-200">"ส่งแล้ว"</strong> หรือ <strong className="text-emerald-400">"อนุมัติแล้ว"</strong> หากฝ่ายวิชาการมีข้อเสนอแนะเพิ่มเติมจะปรากฏกล่องข้อคิดเห็นสีเขียว/แดง
+                <p className="leading-relaxed text-slate-600">
+                  เมื่อส่งงานแล้ว สามารถติดตามผลการตรวจรับได้ในแท็บ <strong className="text-slate-900">"ส่งแล้ว"</strong> หรือ <strong className="text-emerald-600">"อนุมัติแล้ว"</strong> หากฝ่ายวิชาการมีข้อเสนอแนะเพิ่มเติมจะปรากฏกล่องข้อคิดเห็น
                 </p>
-                <div className="flex items-center gap-2 text-[11px] text-slate-300">
-                  <Printer className="h-4 w-4 text-blue-400 shrink-0" />
-                  <span>สามารถกดปุ่ม <strong className="text-slate-200">"ใบนำส่ง"</strong> เพื่อเปิดแบบฟอร์มทางการและสั่งพิมพ์ลงบนกระดาษ A4 ได้ทันที</span>
+                <div className="flex items-center gap-2 text-[11px] text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200">
+                  <Printer className="h-4 w-4 text-blue-600 shrink-0" />
+                  <span>สามารถกดปุ่ม <strong className="text-slate-900">"ใบนำส่ง"</strong> เพื่อเปิดแบบฟอร์มทางการและสั่งพิมพ์ลงบนกระดาษ A4 ได้ทันที</span>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 space-y-2">
-                <div className="flex items-center gap-2 text-blue-400 font-bold text-sm">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-xs text-blue-400">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-blue-700 font-bold text-sm">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-xs text-blue-700 font-bold">
                     3
                   </span>
                   <span>การใช้งานคลัง Drive & ห้องสื่อสาร</span>
                 </div>
-                <p className="leading-relaxed text-slate-400">
-                  เข้าถึงแม่แบบเอกสารทางการได้ที่เมนู <strong className="text-slate-200">"คลัง Drive"</strong> และสื่อสารประสานงานกับเพื่อนครูในกลุ่มสาระฯ เดียวกันได้ผ่านเมนู <strong className="text-purple-400">"ห้องสื่อสาร"</strong>
+                <p className="leading-relaxed text-slate-600">
+                  เข้าถึงแม่แบบเอกสารส่วนตัวได้ที่เมนู <strong className="text-slate-900">"คลัง Drive"</strong> (เห็นเฉพาะของตนเอง) และสื่อสารประสานงานกับเพื่อนครูได้ผ่านเมนู <strong className="text-purple-600">"ห้องสื่อสาร"</strong> พร้อมระบบเสียงแจ้งเตือนแบบเรียลไทม์
                 </p>
               </div>
             </div>
@@ -133,55 +139,32 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
           {/* ADMIN TAB */}
           {activeTab === 'admin' && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 space-y-2">
-                <div className="flex items-center gap-2 text-purple-400 font-bold text-sm">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-500/20 text-xs text-purple-400">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-purple-700 font-bold text-sm">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-xs text-purple-700 font-bold">
                     1
                   </span>
                   <span>การสร้างและมอบหมายภาระงานโรงเรียน</span>
                 </div>
-                <p className="leading-relaxed text-slate-400">
-                  ไปที่เมนู <strong className="text-slate-200">"จัดการงาน"</strong> กดปุ่ม <strong className="text-purple-400">"สร้างภาระงานใหม่"</strong> สามารถเลือกผู้รับมอบหมายได้ 3 รูปแบบ:
+                <p className="leading-relaxed text-slate-600">
+                  ไปที่เมนู <strong className="text-slate-900">"จัดการงาน"</strong> กดปุ่ม <strong className="text-purple-600">"มอบหมายงานใหม่"</strong> สามารถกำหนดงานย่อย (Subtasks) และเลือกผู้รับมอบหมายได้ 3 รูปแบบ: ครูทุกคน, เฉพาะกลุ่มสาระฯ, หรือระบุครูรายบุคคล
                 </p>
-                <div className="grid grid-cols-3 gap-2 text-[11px] text-center pt-1">
-                  <div className="rounded-lg bg-slate-900 border border-slate-800 p-2 text-slate-200">
-                    ครูทุกคนในโรงเรียน
-                  </div>
-                  <div className="rounded-lg bg-slate-900 border border-slate-800 p-2 text-slate-200">
-                    เฉพาะกลุ่มสาระฯ
-                  </div>
-                  <div className="rounded-lg bg-slate-900 border border-slate-800 p-2 text-slate-200">
-                    ระบุคุณครูรายบุคคล
-                  </div>
-                </div>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 space-y-2">
-                <div className="flex items-center gap-2 text-purple-400 font-bold text-sm">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-500/20 text-xs text-purple-400">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-purple-700 font-bold text-sm">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-xs text-purple-700 font-bold">
                     2
                   </span>
-                  <span>การตรวจรับผลงาน & ส่งออกรายงาน Excel (CSV)</span>
+                  <span>การตรวจรับผลงาน Checklist & ส่งออกรายงาน</span>
                 </div>
-                <p className="leading-relaxed text-slate-400">
-                  กดปุ่ม <strong className="text-slate-200">"ตรวจรับงาน"</strong> ในแต่ละภาระงาน เพื่อดูรายชื่อครูและลิงก์ผลงาน สามารถคลิกอนุมัติผลงาน หรือส่งกลับพร้อมบันทึก Feedback ให้ครูแก้ไข
+                <p className="leading-relaxed text-slate-600">
+                  กดปุ่ม <strong className="text-slate-900">"ตรวจรับงาน"</strong> ในแต่ละภาระงาน เพื่อดู Checklist ตรวจสอบรายชื่อครูว่าใครส่งงานแล้ว ใครยังไม่ส่ง
                 </p>
-                <div className="flex items-center gap-2 text-[11px] text-emerald-400 font-medium">
-                  <Download className="h-4 w-4 shrink-0" />
-                  <span>กดปุ่ม "ส่งออก CSV" เพื่อดาวน์โหลดรายงานความคืบหน้านำไปเปิดใน Microsoft Excel ได้ทันทีโดยสระไม่เพี้ยน</span>
+                <div className="flex items-center gap-2 text-[11px] text-emerald-700 font-medium bg-emerald-50 p-2.5 rounded-lg border border-emerald-200">
+                  <Download className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span>สามารถกดปุ่ม "ส่งออก CSV" เพื่อนำข้อมูลไปเปิดใน Microsoft Excel ได้ทันที</span>
                 </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 space-y-2">
-                <div className="flex items-center gap-2 text-purple-400 font-bold text-sm">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-500/20 text-xs text-purple-400">
-                    3
-                  </span>
-                  <span>การจัดการครูและตรวจสอบประวัติระบบ</span>
-                </div>
-                <p className="leading-relaxed text-slate-400">
-                  เพิ่มครูใหม่, รีเซ็ตรหัสผ่าน, ระงับบัญชีครูที่ย้ายได้ที่เมนู <strong className="text-slate-200">"จัดการครู"</strong> และตรวจสอบ Audit Trail ย้อนหลังได้ที่เมนู <strong className="text-slate-200">"ประวัติระบบ"</strong>
-                </p>
               </div>
             </div>
           )}
@@ -189,49 +172,38 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
           {/* PWA INSTALL TAB */}
           {activeTab === 'pwa' && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm">
                   <Smartphone className="h-5 w-5" />
                   <span>การติดตั้งบนสมาร์ตโฟน Android</span>
                 </div>
-                <ol className="list-decimal list-inside space-y-1.5 text-slate-400 leading-relaxed">
+                <ol className="list-decimal list-inside space-y-1.5 text-slate-600 leading-relaxed">
                   <li>เปิดเว็บไซต์ผ่านเบราว์เซอร์ Google Chrome</li>
-                  <li>สังเกตแถบแบนเนอร์ด้านล่างจอ แล้วกดปุ่ม <strong className="text-emerald-400">"ติดตั้งแอปเลย"</strong></li>
-                  <li>หรือกดเมนู 3 จุด (⋮) ที่มุมขวาบนของ Chrome เลือก <strong className="text-slate-200">"ติดตั้งแอปพลิเคชัน" (Install App)</strong></li>
+                  <li>กดปุ่ม <strong className="text-emerald-600">"ติดตั้งแอปเลย"</strong> ที่แถบแบนเนอร์ด้านล่างจอ</li>
+                  <li>หรือกดเมนู 3 จุด (⋮) เลือก <strong className="text-slate-800">"ติดตั้งแอปพลิเคชัน" (Install App)</strong></li>
                 </ol>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm">
                   <Smartphone className="h-5 w-5" />
                   <span>การติดตั้งบน iPhone / iPad (iOS)</span>
                 </div>
-                <ol className="list-decimal list-inside space-y-1.5 text-slate-400 leading-relaxed">
-                  <li>เปิดเว็บไซต์ผ่านเบราว์เซอร์ Safari</li>
-                  <li>กดปุ่มแชร์ (ไอคอนสี่เหลี่ยมมีลูกศรชี้ขึ้น) ที่แถบด้านล่าง</li>
-                  <li>เลื่อนลงมาเลือก <strong className="text-slate-200">"เพิ่มไปยังหน้าจอโฮม" (Add to Home Screen)</strong></li>
+                <ol className="list-decimal list-inside space-y-1.5 text-slate-600 leading-relaxed">
+                  <li>เปิดเว็บไซต์ผ่าน Safari</li>
+                  <li>กดปุ่มแชร์ (สี่เหลี่ยมมีลูกศรชี้ขึ้น) แล้วเลือก <strong className="text-slate-800">"เพิ่มไปยังหน้าจอโฮม" (Add to Home Screen)</strong></li>
                 </ol>
-              </div>
-
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-                  <CheckCircle2 className="h-5 w-5" />
-                  <span>การทำงานในโหมดออฟไลน์ (Offline Mode)</span>
-                </div>
-                <p className="text-slate-400 leading-relaxed">
-                  เมื่อติดตั้งแล้ว แม้อยู่ในพื้นที่ที่ไม่มีสัญญาณอินเทอร์เน็ต แอปพลิเคชันจะยังคงสามารถเปิดอ่านข้อมูลเอกสารและหน้าระบบที่เคยเปิดดูไว้ได้ตามปกติผ่าน Service Worker Cache
-                </p>
               </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-800 px-6 py-3 bg-slate-950/80 text-xs text-slate-500">
+        <div className="flex items-center justify-between border-t border-slate-200 px-6 py-3.5 bg-slate-50 text-xs text-slate-500">
           <span>School Work Hub Documentation</span>
           <button
             onClick={onClose}
-            className="rounded-xl bg-slate-800 px-4 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 transition-colors cursor-pointer"
+            className="rounded-xl bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors cursor-pointer"
           >
             เข้าใจแล้ว
           </button>
@@ -239,4 +211,6 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

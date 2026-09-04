@@ -84,11 +84,11 @@ export const ProfileSettingsPage: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-          <User className="h-6 w-6 text-blue-400" />
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
+          <User className="h-6 w-6 text-blue-600" />
           <span>ข้อมูลส่วนตัวและการตั้งค่าความปลอดภัย</span>
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-slate-600 mt-1">
           ตรวจสอบข้อมูลบัญชีผู้ใช้งาน และเปลี่ยนรหัสผ่านส่วนตัวสำหรับเข้าสู่ระบบ
         </p>
       </div>
@@ -98,14 +98,14 @@ export const ProfileSettingsPage: React.FC = () => {
         <div
           className={`flex items-center gap-2.5 rounded-xl border p-4 text-sm ${
             feedback.type === 'success'
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-              : 'border-red-500/30 bg-red-500/10 text-red-300'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-red-200 bg-red-50 text-red-800'
           }`}
         >
           {feedback.type === 'success' ? (
-            <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
           ) : (
-            <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+            <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
           )}
           <span>{feedback.message}</span>
         </div>
@@ -113,19 +113,19 @@ export const ProfileSettingsPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Column: Profile Card */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 backdrop-blur space-y-5">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
           <div className="flex flex-col items-center text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-2xl font-bold text-white shadow-xl shadow-blue-600/20 mb-3">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-2xl font-bold text-white shadow-lg shadow-blue-600/15 mb-3">
               {profile?.name ? profile.name.charAt(0) : '?'}
             </div>
-            <h2 className="text-base font-bold text-white">{profile?.name}</h2>
-            <p className="text-xs text-blue-400 font-mono mt-0.5">@{profile?.username}</p>
+            <h2 className="text-base font-bold text-slate-900">{profile?.name}</h2>
+            <p className="text-xs text-blue-600 font-mono mt-0.5">@{profile?.username}</p>
 
             <span
               className={`mt-2.5 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold ${
                 role === 'admin'
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                  : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
               }`}
             >
               <Shield className="h-3 w-3" />
@@ -133,33 +133,33 @@ export const ProfileSettingsPage: React.FC = () => {
             </span>
           </div>
 
-          <div className="border-t border-slate-800 pt-4 space-y-3 text-xs">
-            <div className="flex items-center justify-between text-slate-400">
+          <div className="border-t border-slate-100 pt-4 space-y-3 text-xs">
+            <div className="flex items-center justify-between text-slate-600">
               <span className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5 text-slate-500" />
+                <Users className="h-3.5 w-3.5 text-slate-400" />
                 <span>กลุ่มสาระฯ:</span>
               </span>
-              <span className="font-semibold text-slate-200">
+              <span className="font-semibold text-slate-900">
                 {profile?.user_groups?.name || 'ยังไม่ระบุกลุ่ม'}
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-slate-400">
+            <div className="flex items-center justify-between text-slate-600">
               <span className="flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-slate-500" />
+                <Clock className="h-3.5 w-3.5 text-slate-400" />
                 <span>เข้าสู่ระบบล่าสุด:</span>
               </span>
-              <span className="font-medium text-slate-300">
+              <span className="font-medium text-slate-800">
                 {profile?.last_seen ? new Date(profile.last_seen).toLocaleDateString('th-TH') : '-'}
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-slate-400">
+            <div className="flex items-center justify-between text-slate-600">
               <span className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                <Calendar className="h-3.5 w-3.5 text-slate-400" />
                 <span>วันที่สร้างบัญชี:</span>
               </span>
-              <span className="font-medium text-slate-300">
+              <span className="font-medium text-slate-800">
                 {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('th-TH') : '-'}
               </span>
             </div>
@@ -167,25 +167,25 @@ export const ProfileSettingsPage: React.FC = () => {
         </div>
 
         {/* Right Column: Change Password Card */}
-        <div className="md:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/50 p-6 backdrop-blur space-y-5">
-          <div className="border-b border-slate-800 pb-4">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Key className="h-4 w-4 text-blue-400" />
+        <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+          <div className="border-b border-slate-100 pb-4">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Key className="h-4 w-4 text-blue-600" />
               <span>เปลี่ยนรหัสผ่านด้วยตนเอง</span>
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-600 mt-1">
               กำหนดรหัสผ่านใหม่ของคุณ เพื่อความปลอดภัยในการเข้าใช้งานระบบ
             </p>
           </div>
 
           <form onSubmit={handlePasswordChange} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)
               </label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                  <Lock className="h-4 w-4 text-slate-500" />
+                  <Lock className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -193,12 +193,12 @@ export const ProfileSettingsPage: React.FC = () => {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="กรอกรหัสผ่านใหม่..."
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950/80 pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-500 hover:text-slate-300 cursor-pointer"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -206,12 +206,12 @@ export const ProfileSettingsPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 ยืนยันรหัสผ่านใหม่
               </label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                  <Lock className="h-4 w-4 text-slate-500" />
+                  <Lock className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -219,16 +219,16 @@ export const ProfileSettingsPage: React.FC = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="กรอกยืนยันรหัสผ่านใหม่อีกครั้ง..."
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950/80 pl-10 pr-4 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-800 flex justify-end">
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
               <button
                 type="submit"
                 disabled={isUpdating}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-lg shadow-blue-600/20 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 transition-all cursor-pointer"
               >
                 {isUpdating ? (
                   <>

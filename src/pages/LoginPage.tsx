@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
-import { GraduationCap, Lock, User, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react'
+import { supabase } from '@/services/supabase'
+import { Lock, User, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react'
 
 export const LoginPage: React.FC = () => {
-  const { isAuthenticated, login, isLoading: isAuthLoading } = useAuth()
+  const { isAuthenticated, profile, login, isLoading: isAuthLoading } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -16,7 +17,11 @@ export const LoginPage: React.FC = () => {
 
   // Redirect if already authenticated
   if (isAuthenticated && !isAuthLoading) {
-    const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
+    let from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
+    // If destination is admin route but user is teacher, send to home
+    if (from.startsWith('/admin') && profile?.role !== 'admin') {
+      from = '/'
+    }
     return <Navigate to={from} replace />
   }
 
@@ -40,7 +45,13 @@ export const LoginPage: React.FC = () => {
     try {
       const result = await login({ username: cleanUsername, password })
       if (result.success) {
-        const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
+        let from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
+        // Check role returned or user session
+        const { data: sessionData } = await supabase.auth.getUser()
+        const userRole = sessionData.user?.user_metadata?.role || 'teacher'
+        if (from.startsWith('/admin') && userRole !== 'admin') {
+          from = '/'
+        }
         navigate(from, { replace: true })
       } else {
         setErrorMessage(result.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
@@ -53,42 +64,49 @@ export const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4 py-12 relative overflow-hidden">
-      {/* Background glow effects */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12 relative overflow-hidden">
+      {/* Background subtle glow effects */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-100/60 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-indigo-100/50 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md z-10">
-        {/* Header Branding */}
+        {/* Header Branding with Sarasas School Crest */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600/20 border border-blue-500/30 text-blue-400 mb-4 shadow-lg shadow-blue-500/10">
-            <GraduationCap className="h-8 w-8" />
+          <div className="inline-flex items-center justify-center mb-3">
+            <img
+              src="/school-logo.png"
+              alt="ตราสัญลักษณ์โรงเรียนสารสาสน์วิเทศราชพฤกษ์"
+              className="h-20 w-20 object-contain drop-shadow-md rounded-full bg-white p-1 border border-amber-200/80"
+            />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+          <p className="text-xs font-semibold tracking-wider text-blue-700 uppercase">
+            Sarasas Witaed Ratchaphruek School
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl mt-1">
             School Work Hub
           </h1>
-          <p className="mt-2 text-sm text-slate-400">
-            ระบบบริหารจัดการงานโรงเรียนสำหรับคณะครูและบุคลากร
+          <p className="mt-1.5 text-xs text-slate-500">
+            ระบบบริหารจัดการภาระงานและเอกสารฝ่ายวิชาการ
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-xl p-6 sm:p-8 shadow-2xl">
+        <div className="rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-slate-200/60">
           <form onSubmit={handleSubmit} className="space-y-5">
             {errorMessage && (
-              <div className="flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300">
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
-                <span className="leading-relaxed">{errorMessage}</span>
+              <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-700">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
+                <span className="leading-relaxed font-medium">{errorMessage}</span>
               </div>
             )}
 
             {/* Username input */}
             <div>
-              <label htmlFor="username" className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label htmlFor="username" className="block text-xs font-medium text-slate-700 mb-1.5">
                 ชื่อผู้ใช้งาน (Username)
               </label>
               <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                   <User className="h-4 w-4" />
                 </div>
                 <input
@@ -99,22 +117,19 @@ export const LoginPage: React.FC = () => {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                  placeholder="เช่น teacher01"
-                  className="block w-full rounded-xl border border-slate-800 bg-slate-950/70 pl-9 pr-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+                  placeholder="เช่น teacher_thai หรือ admin"
+                  className="block w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
                 />
               </div>
-              <p className="mt-1 text-[11px] text-slate-500">
-                ใช้ชื่อผู้ใช้งานที่โรงเรียนกำหนด (พิมพ์ตัวพิมพ์เล็กทั้งหมด)
-              </p>
             </div>
 
             {/* Password input */}
             <div>
-              <label htmlFor="password" className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label htmlFor="password" className="block text-xs font-medium text-slate-700 mb-1.5">
                 รหัสผ่าน (Password)
               </label>
               <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                   <Lock className="h-4 w-4" />
                 </div>
                 <input
@@ -126,12 +141,12 @@ export const LoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="block w-full rounded-xl border border-slate-800 bg-slate-950/70 pl-9 pr-10 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+                  className="block w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-10 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
                   tabIndex={-1}
                   aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
                 >
@@ -144,53 +159,18 @@ export const LoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 hover:from-blue-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:opacity-60 disabled:cursor-not-allowed transition-all cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all cursor-pointer mt-2"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>กำลังตรวจสอบข้อมูล...</span>
+                  <span>กำลังเข้าสู่ระบบ...</span>
                 </>
               ) : (
                 <span>เข้าสู่ระบบ</span>
               )}
             </button>
           </form>
-
-          {/* Quick Demo Preset Buttons */}
-          <div className="mt-4 pt-4 border-t border-slate-800/80">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-medium text-slate-400">คลิกเติมข้อมูลเพื่อทดสอบสาธิต (Demo Quick-Fill):</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <button
-                type="button"
-                onClick={() => {
-                  setUsername('admin')
-                  setPassword('Admin1234!')
-                }}
-                className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-2.5 py-1.5 font-medium text-purple-300 hover:bg-purple-500/20 transition-colors text-left cursor-pointer"
-              >
-                👑 ผู้ดูแลระบบ (admin)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setUsername('teacher01')
-                  setPassword('Teacher1234!')
-                }}
-                className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 font-medium text-blue-300 hover:bg-blue-500/20 transition-colors text-left cursor-pointer"
-              >
-                👨‍🏫 คุณครู (teacher01)
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 border-t border-slate-800/80 pt-4 text-center">
-            <p className="text-xs text-slate-500">
-              กรณีลืมรหัสผ่านหรือยังไม่มีบัญชีผู้ใช้ กรุณาติดต่อผู้ดูแลระบบโรงเรียน
-            </p>
-          </div>
         </div>
       </div>
     </div>

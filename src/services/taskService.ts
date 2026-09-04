@@ -48,6 +48,7 @@ export interface CreateTaskPayload {
   due_date?: string | null
   priority: TaskPriority
   created_by: string
+  subtasks?: { id: string; title: string; completed?: boolean }[]
 }
 
 /**
@@ -158,6 +159,7 @@ export async function createTask(payload: CreateTaskPayload): Promise<{ success:
         due_date: payload.due_date || null,
         priority: payload.priority,
         status: 'open',
+        subtasks: payload.subtasks || [],
       })
       .select('id')
       .single()

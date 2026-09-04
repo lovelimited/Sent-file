@@ -31,6 +31,12 @@ export type ChatMessage = Database['public']['Tables']['chat_messages']['Row']
 export type AppNotification = Database['public']['Tables']['notifications']['Row']
 export type DriveResource = Database['public']['Tables']['drive_resources']['Row']
 
+export interface SubtaskItem {
+  id: string
+  title: string
+  completed?: boolean
+}
+
 export interface AppConfig {
   supabaseUrl: string
   supabaseAnonKey: string
