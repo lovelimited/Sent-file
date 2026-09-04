@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL || 'https://xusudxzoiqcfqxvuerhy.supabase.co'
+const supabaseAnonKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  'sb_publishable_tO1qN0s9xsuXRqvXajDlCA_8agZ3Y8v'
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
@@ -20,8 +23,8 @@ if (!isSupabaseConfigured) {
 
 // Initialize Supabase client
 export const supabase = createClient<Database>(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-anon-key',
+  supabaseUrl,
+  supabaseAnonKey,
   {
     auth: {
       persistSession: true,
