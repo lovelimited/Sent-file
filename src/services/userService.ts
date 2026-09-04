@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type { ProfileWithGroup } from '@/types/auth.types'
-import type { UserGroup, ActivityLog, UserRole } from '@/types/index'
+import type { UserGroup, ActivityLog, UserRole, Database } from '@/types/index'
 
 export interface CreateUserPayload {
   username: string
@@ -343,5 +343,46 @@ export async function fetchActivityLogs(): Promise<{ data: ActivityLogWithProfil
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to fetch activity logs'
     return { data: null, error: message }
+  }
+}
+
+export interface UpdateProfilePayload {
+  name?: string
+  username?: string
+  role?: UserRole
+  group_id?: string | null
+  avatar_url?: string | null
+}
+
+/**
+ * Update a user profile (User updating own profile or Admin updating any profile)
+ */
+export async function updateUserProfile(
+  userId: string,
+  payload: UpdateProfilePayload
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const updateData: Database['public']['Tables']['profiles']['Update'] = {
+      updated_at: new Date().toISOString(),
+    }
+    if (payload.name !== undefined) updateData.name = payload.name.trim()
+    if (payload.username !== undefined) updateData.username = payload.username.trim()
+    if (payload.role !== undefined) updateData.role = payload.role
+    if (payload.group_id !== undefined) updateData.group_id = payload.group_id || null
+    if (payload.avatar_url !== undefined) updateData.avatar_url = payload.avatar_url
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(updateData)
+      .eq('id', userId)
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'ไม่สามารถอัปเดตข้อมูลโปรไฟล์ได้'
+    return { success: false, error: message }
   }
 }

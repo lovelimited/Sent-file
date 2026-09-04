@@ -49,6 +49,7 @@ export interface CreateTaskPayload {
   priority: TaskPriority
   created_by: string
   subtasks?: { id: string; title: string; completed?: boolean }[]
+  drive_folder_url?: string | null
 }
 
 /**
@@ -160,6 +161,7 @@ export async function createTask(payload: CreateTaskPayload): Promise<{ success:
         priority: payload.priority,
         status: 'open',
         subtasks: payload.subtasks || [],
+        drive_folder_url: payload.drive_folder_url?.trim() || 'https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i',
       })
       .select('id')
       .single()

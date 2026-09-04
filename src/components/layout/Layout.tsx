@@ -5,6 +5,7 @@ import { Footer } from './Footer'
 import { OfflineBanner } from '@/components/pwa/OfflineBanner'
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner'
 import { ChatRealtimeNotifier } from '@/components/chat/ChatRealtimeNotifier'
+import { FloatingChatDock } from '@/components/chat/FloatingChatDock'
 
 export const Layout: React.FC = () => {
   return (
@@ -16,6 +17,7 @@ export const Layout: React.FC = () => {
       </main>
       <Footer />
       <ChatRealtimeNotifier />
+      <FloatingChatDock />
       <PWAInstallBanner />
     </div>
   )

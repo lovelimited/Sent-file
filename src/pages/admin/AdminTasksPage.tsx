@@ -16,6 +16,7 @@ import {
   Printer,
   ListTodo,
   Search,
+  FolderOpen,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import type { TaskPriority, UserGroup, SubtaskItem } from '@/types/index'
@@ -61,6 +62,7 @@ export const AdminTasksPage: React.FC = () => {
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([])
   const [dueDate, setDueDate] = useState('')
   const [priority, setPriority] = useState<TaskPriority>('normal')
+  const [driveFolderUrl, setDriveFolderUrl] = useState('https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i')
   const [subtasks, setSubtasks] = useState<{ id: string; title: string }[]>([])
   const [newSubtaskInput, setNewSubtaskInput] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -107,6 +109,7 @@ export const AdminTasksPage: React.FC = () => {
     setSelectedTeacherIds([])
     setDueDate('')
     setPriority('normal')
+    setDriveFolderUrl('https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i')
     setSubtasks([])
     setNewSubtaskInput('')
     setFormError(null)
@@ -156,6 +159,7 @@ export const AdminTasksPage: React.FC = () => {
       priority,
       created_by: user.id,
       subtasks,
+      drive_folder_url: driveFolderUrl.trim() || 'https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i',
     })
     setIsSubmitting(false)
 
@@ -368,6 +372,20 @@ export const AdminTasksPage: React.FC = () => {
                       <span>มีงานย่อย: {subtasksList.length} รายการ</span>
                     </div>
                   )}
+
+                  {/* Drive Folder Link */}
+                  <div className="mt-2 flex items-center gap-1 text-[11px]">
+                    <a
+                      href={task.drive_folder_url || 'https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      <FolderOpen className="h-3 w-3" />
+                      <span>โฟลเดอร์ Google Drive ประจำงาน</span>
+                      <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                  </div>
 
                   {/* Progress Bar */}
                   <div className="mt-4 space-y-1.5">
@@ -629,6 +647,34 @@ export const AdminTasksPage: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Dedicated Google Drive Task Folder */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium text-slate-700">
+                    โฟลเดอร์ Google Drive ประจำภาระงาน (สร้างโฟลเดอร์แยกงาน)
+                  </label>
+                  <a
+                    href="https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center gap-1"
+                  >
+                    <FolderOpen className="h-3 w-3" />
+                    <span>เปิดไดรฟ์รวมเพื่อสร้างโฟลเดอร์แยก ↗</span>
+                  </a>
+                </div>
+                <input
+                  type="url"
+                  value={driveFolderUrl}
+                  onChange={(e) => setDriveFolderUrl(e.target.value)}
+                  placeholder="https://drive.google.com/drive/folders/..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-900 focus:bg-white focus:border-blue-600 focus:outline-none"
+                />
+                <p className="mt-1 text-[11px] text-slate-500">
+                  ครูจะได้รับปุ่มเปิดโฟลเดอร์นี้ในหน้าภาระงาน เพื่ออัปโหลดและส่งงานในโฟลเดอร์ของภาระงานนี้โดยตรง
+                </p>
+              </div>
 
               {/* Due Date and Priority */}
               <div className="grid grid-cols-2 gap-3">

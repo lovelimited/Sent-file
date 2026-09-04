@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LogOut,
@@ -13,54 +13,74 @@ import {
   FolderOpen,
   Settings,
   HelpCircle,
+  ChevronDown,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { UserGuideModal } from '@/components/help/UserGuideModal'
+import { getAvatarUrl } from '@/utils/avatarUtils'
 
 export const Navbar: React.FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const { isAuthenticated, profile, isAdmin, logout } = useAuth()
   const [isGuideOpen, setIsGuideOpen] = useState(false)
+  const [isAdminDropdownOpen, setIsAdminDropdownOpen] = useState(false)
+  const adminDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (adminDropdownRef.current && !adminDropdownRef.current.contains(e.target as Node)) {
+        setIsAdminDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleLogout = async () => {
     await logout()
     navigate('/login', { replace: true, state: null })
   }
 
+  const isAdminSubpageActive =
+    location.pathname === '/admin/users' ||
+    location.pathname === '/admin/groups' ||
+    location.pathname === '/admin/logs'
+
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-md shadow-xs">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6">
         {/* Brand Logo with Sarasas Crest */}
         <Link
           to="/"
-          className="flex items-center gap-2.5 text-slate-900 font-semibold text-base sm:text-lg tracking-tight hover:opacity-90 transition-opacity"
+          className="flex items-center gap-2.5 text-slate-900 font-semibold text-base sm:text-lg tracking-tight hover:opacity-90 transition-opacity shrink-0"
         >
           <img
             src="/school-logo.png"
             alt="ตราสัญลักษณ์โรงเรียนสารสาสน์วิเทศราชพฤกษ์"
-            className="h-10 w-10 object-contain rounded-full bg-white p-0.5 border border-amber-300 drop-shadow-xs"
+            className="h-10 w-10 object-contain rounded-full bg-white p-0.5 border border-amber-300 drop-shadow-xs shrink-0"
           />
           <div className="flex flex-col">
             <span className="leading-tight font-bold text-slate-900 text-sm sm:text-base">
               School Work Hub
             </span>
-            <span className="text-[10px] font-normal text-slate-500">
+            <span className="text-[10px] font-normal text-slate-500 hidden sm:inline">
               สารสาสน์วิเทศราชพฤกษ์
             </span>
           </div>
         </Link>
 
         {/* Navigation & User Menu */}
-        <nav className="flex items-center gap-2 sm:gap-3 text-sm">
+        <nav className="flex items-center gap-1.5 sm:gap-2.5 text-sm">
           {isAuthenticated && profile ? (
             <>
-              {/* Navigation Links for Authenticated Users */}
+              {/* Desktop Navigation Links */}
               <div className="hidden md:flex items-center gap-1 text-xs font-medium">
                 <Link
                   to="/"
-                  className={`rounded-lg px-3 py-1.5 transition-colors ${
+                  className={`rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
                     location.pathname === '/'
                       ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -70,22 +90,39 @@ export const Navbar: React.FC = () => {
                 </Link>
 
                 {/* Teacher Task link */}
-                <Link
-                  to="/tasks"
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors ${
-                    location.pathname === '/tasks'
-                      ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <CheckSquare className="h-3.5 w-3.5" />
-                  <span>ภาระงานของฉัน</span>
-                </Link>
+                {!isAdmin && (
+                  <Link
+                    to="/tasks"
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                      location.pathname === '/tasks'
+                        ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <CheckSquare className="h-3.5 w-3.5" />
+                    <span>ภาระงานของฉัน</span>
+                  </Link>
+                )}
+
+                {/* Admin Task Management link */}
+                {isAdmin && (
+                  <Link
+                    to="/admin/tasks"
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                      location.pathname === '/admin/tasks'
+                        ? 'bg-purple-50 text-purple-700 font-semibold border border-purple-200/60'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <ClipboardList className="h-3.5 w-3.5 text-purple-600" />
+                    <span>จัดการภาระงาน</span>
+                  </Link>
+                )}
 
                 {/* Chat link */}
                 <Link
                   to="/chat"
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors ${
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
                     location.pathname === '/chat'
                       ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -98,7 +135,7 @@ export const Navbar: React.FC = () => {
                 {/* Drive Resources link */}
                 <Link
                   to="/drive"
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors ${
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
                     location.pathname === '/drive'
                       ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -108,57 +145,75 @@ export const Navbar: React.FC = () => {
                   <span>คลัง Drive</span>
                 </Link>
 
-                {/* Admin Navigation */}
+                {/* Admin Submenu Dropdown */}
                 {isAdmin && (
-                  <>
-                    <Link
-                      to="/admin/tasks"
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors ${
-                        location.pathname === '/admin/tasks'
+                  <div className="relative" ref={adminDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsAdminDropdownOpen(!isAdminDropdownOpen)}
+                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors cursor-pointer whitespace-nowrap ${
+                        isAdminSubpageActive
                           ? 'bg-purple-50 text-purple-700 font-semibold border border-purple-200/60'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      <ClipboardList className="h-3.5 w-3.5 text-purple-600" />
-                      <span>จัดการงาน</span>
-                    </Link>
+                      <Shield className="h-3.5 w-3.5 text-purple-600" />
+                      <span>การจัดการระบบ</span>
+                      <ChevronDown className={`h-3 w-3 transition-transform ${isAdminDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
 
-                    <Link
-                      to="/admin/users"
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors ${
-                        location.pathname === '/admin/users'
-                          ? 'bg-purple-50 text-purple-700 font-semibold border border-purple-200/60'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                      }`}
-                    >
-                      <Users className="h-3.5 w-3.5 text-purple-600" />
-                      <span>จัดการครู</span>
-                    </Link>
+                    {isAdminDropdownOpen && (
+                      <div className="absolute right-0 mt-1 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                        <Link
+                          to="/admin/users"
+                          onClick={() => setIsAdminDropdownOpen(false)}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors ${
+                            location.pathname === '/admin/users'
+                              ? 'bg-purple-50 text-purple-700 font-semibold'
+                              : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <Users className="h-4 w-4 text-purple-600" />
+                          <div>
+                            <p className="font-medium leading-tight">จัดการบุคลากรครู</p>
+                            <p className="text-[10px] text-slate-400">แก้ไขข้อมูลและสถานะครู</p>
+                          </div>
+                        </Link>
 
-                    <Link
-                      to="/admin/groups"
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors ${
-                        location.pathname === '/admin/groups'
-                          ? 'bg-purple-50 text-purple-700 font-semibold border border-purple-200/60'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                      }`}
-                    >
-                      <FolderTree className="h-3.5 w-3.5 text-purple-600" />
-                      <span>กลุ่มสาระฯ</span>
-                    </Link>
+                        <Link
+                          to="/admin/groups"
+                          onClick={() => setIsAdminDropdownOpen(false)}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors ${
+                            location.pathname === '/admin/groups'
+                              ? 'bg-purple-50 text-purple-700 font-semibold'
+                              : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <FolderTree className="h-4 w-4 text-purple-600" />
+                          <div>
+                            <p className="font-medium leading-tight">กลุ่มสาระการเรียนรู้</p>
+                            <p className="text-[10px] text-slate-400">โครงสร้างกลุ่มและฝ่ายงาน</p>
+                          </div>
+                        </Link>
 
-                    <Link
-                      to="/admin/logs"
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors ${
-                        location.pathname === '/admin/logs'
-                          ? 'bg-purple-50 text-purple-700 font-semibold border border-purple-200/60'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                      }`}
-                    >
-                      <FileText className="h-3.5 w-3.5 text-purple-600" />
-                      <span>ประวัติระบบ</span>
-                    </Link>
-                  </>
+                        <Link
+                          to="/admin/logs"
+                          onClick={() => setIsAdminDropdownOpen(false)}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors ${
+                            location.pathname === '/admin/logs'
+                              ? 'bg-purple-50 text-purple-700 font-semibold'
+                              : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <FileText className="h-4 w-4 text-purple-600" />
+                          <div>
+                            <p className="font-medium leading-tight">ประวัติกิจกรรมระบบ</p>
+                            <p className="text-[10px] text-slate-400">ตรวจสอบ Audit Trail</p>
+                          </div>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -166,13 +221,15 @@ export const Navbar: React.FC = () => {
               <NotificationBell />
 
               {/* User details badge */}
-              <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1.5 pr-2.5 sm:pr-3">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-600 border border-blue-200 font-bold text-xs">
-                  {profile.name ? profile.name.charAt(0) : 'U'}
-                </div>
+              <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1.5 pr-2.5 sm:pr-3 shrink-0">
+                <img
+                  src={getAvatarUrl(profile.avatar_url, profile.name)}
+                  alt={profile.name}
+                  className="h-7 w-7 rounded-full object-cover border border-slate-200 bg-white"
+                />
                 <div className="flex flex-col text-left">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-slate-800 truncate max-w-[90px] sm:max-w-[140px]">
+                    <span className="text-xs font-semibold text-slate-800 truncate max-w-[80px] sm:max-w-[120px]">
                       {profile.name}
                     </span>
                     <span
@@ -183,12 +240,12 @@ export const Navbar: React.FC = () => {
                       }`}
                     >
                       {profile.role === 'admin' && <Shield className="h-2.5 w-2.5" />}
-                      {profile.role === 'admin' ? 'แอดมิน' : 'คุณครู'}
+                      {profile.role === 'admin' ? 'แอดมิน' : 'ครู'}
                     </span>
                   </div>
                   {profile.user_groups?.name && (
-                    <span className="text-[10px] text-slate-500 leading-none truncate max-w-[110px]">
-                      กลุ่มสาระฯ {profile.user_groups.name}
+                    <span className="text-[10px] text-slate-500 leading-none truncate max-w-[100px]">
+                      {profile.user_groups.name}
                     </span>
                   )}
                 </div>

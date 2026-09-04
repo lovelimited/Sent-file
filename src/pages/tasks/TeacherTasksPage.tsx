@@ -35,6 +35,7 @@ export const TeacherTasksPage: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<TeacherTaskItem | null>(null)
   const [taskToPrint, setTaskToPrint] = useState<TeacherTaskItem | null>(null)
   const [submissionNote, setSubmissionNote] = useState('')
+  const [externalDriveUrl, setExternalDriveUrl] = useState('')
   const [fileToUpload, setFileToUpload] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -88,6 +89,7 @@ export const TeacherTasksPage: React.FC = () => {
     setSubmissionNote(item.submission_note || '')
     setFileToUpload(null)
     setFormError(null)
+    setExternalDriveUrl(item.submission_url && item.submission_url.startsWith('http') ? item.submission_url : '')
   }
 
   const handleFileDrop = (e: React.DragEvent) => {
@@ -103,21 +105,26 @@ export const TeacherTasksPage: React.FC = () => {
     if (!selectedTask || !user?.id) return
     setFormError(null)
 
-    if (!submissionNote.trim() && !fileToUpload && !selectedTask.submission_url) {
-      setFormError('กรุณาอัปโหลดไฟล์ผลงาน หรือกรอกบันทึกการส่งงาน')
+    if (!submissionNote.trim() && !fileToUpload && !externalDriveUrl.trim() && !selectedTask.submission_url) {
+      setFormError('กรุณาอัปโหลดไฟล์ผลงาน หรือแนบลิงก์ Google Drive หรือกรอกบันทึกการส่งงาน')
       return
     }
 
     setIsSubmitting(true)
 
-    let finalFileUrl = selectedTask.submission_url || ''
+    let finalFileUrl = externalDriveUrl.trim() || selectedTask.submission_url || ''
 
     // If user selected a new file, upload to Supabase Storage bucket 'submissions'
     if (fileToUpload) {
       try {
-        const fileExt = fileToUpload.name.split('.').pop()
-        const cleanName = encodeURIComponent(fileToUpload.name.replace(/\.[^/.]+$/, ''))
-        const filePath = `${user.id}/${Date.now()}_${cleanName}.${fileExt}`
+        const fileExt = fileToUpload.name.split('.').pop() || 'dat'
+        const safeName = fileToUpload.name
+          .replace(/\.[^/.]+$/, '')
+          .replace(/[^a-zA-Z0-9_-]/g, '_')
+          .substring(0, 40)
+        const taskId = selectedTask.task_id || selectedTask.tasks?.id || 'task_general'
+        // Organize files into separate task folders: tasks/{taskId}/{userId}_{timestamp}_{filename}
+        const filePath = `tasks/${taskId}/${user.id}_${Date.now()}_${safeName}.${fileExt}`
 
         const { error: uploadErr } = await supabase.storage
           .from('submissions')
@@ -126,17 +133,22 @@ export const TeacherTasksPage: React.FC = () => {
           })
 
         if (uploadErr) {
-          console.warn('Storage upload error, using direct reference:', uploadErr.message)
-          finalFileUrl = `https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i [ไฟล์: ${fileToUpload.name}]`
-        } else {
-          const { data: publicUrlData } = supabase.storage
-            .from('submissions')
-            .getPublicUrl(filePath)
-          finalFileUrl = publicUrlData.publicUrl
+          console.error('Storage upload error:', uploadErr.message)
+          setIsSubmitting(false)
+          setFormError(`เกิดข้อผิดพลาดในการอัปโหลดไฟล์: ${uploadErr.message} (หากอัปโหลดไฟล์ไม่ผ่าน ท่านสามารถวางลิงก์ Google Drive โดยตรงในช่องด้านล่างได้)`)
+          return
         }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('submissions')
+          .getPublicUrl(filePath)
+        finalFileUrl = publicUrlData.publicUrl
       } catch (err: unknown) {
         console.error('File upload exception:', err)
-        finalFileUrl = `https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i [ไฟล์: ${fileToUpload.name}]`
+        setIsSubmitting(false)
+        const errMsg = err instanceof Error ? err.message : 'Upload failed'
+        setFormError(`เกิดข้อผิดพลาดในการอัปโหลดไฟล์: ${errMsg}`)
+        return
       }
     }
 
@@ -374,6 +386,22 @@ export const TeacherTasksPage: React.FC = () => {
                       <p>{item.feedback}</p>
                     </div>
                   )}
+
+                  {/* Task Dedicated Google Drive Folder */}
+                  {task.drive_folder_url && (
+                    <div className="mt-3">
+                      <a
+                        href={task.drive_folder_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200/80 px-2.5 py-1 text-[11px] font-medium text-blue-700 transition-colors"
+                      >
+                        <FolderOpen className="h-3 w-3 text-blue-600" />
+                        <span>โฟลเดอร์ Google Drive ประจำงาน</span>
+                        <ExternalLink className="h-2.5 w-2.5 text-blue-400" />
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
@@ -468,21 +496,35 @@ export const TeacherTasksPage: React.FC = () => {
                 </div>
               )}
 
+              {/* Task Dedicated Google Drive Folder Card */}
+              <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50/90 to-indigo-50/50 p-3.5 flex items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-blue-600 p-2 text-white shadow-xs shrink-0">
+                    <FolderOpen className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900">โฟลเดอร์ Google Drive ประจำภาระงานนี้</h4>
+                    <p className="text-[11px] text-slate-600">เปิดโฟลเดอร์เพื่อจัดเก็บหรือเรียกดูเอกสารประจำงานนี้</p>
+                  </div>
+                </div>
+                <a
+                  href={selectedTask.tasks.drive_folder_url || 'https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 border border-blue-200 hover:bg-blue-50 shadow-xs shrink-0 transition-colors"
+                >
+                  <span>เปิดโฟลเดอร์งาน</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+
               {/* Drag and Drop File Upload Area */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-slate-700">
-                    อัปโหลดไฟล์ผลงาน (ลากและวางไฟล์ที่นี่)
+                    1. อัปโหลดไฟล์ผลงาน (ลากและวางไฟล์ที่นี่)
                   </label>
-                  <a
-                    href="https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline"
-                  >
-                    <span>เปิดโฟลเดอร์ Google Drive</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
+                  <span className="text-[10px] text-slate-400">ระบบจะจัดเก็บแยกโฟลเดอร์งานให้อัตโนมัติ</span>
                 </div>
 
                 <div
@@ -548,10 +590,27 @@ export const TeacherTasksPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* External Google Drive Link Input */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  2. หรือ แนบลิงก์ไฟล์ / โฟลเดอร์จาก Google Drive
+                </label>
+                <input
+                  type="url"
+                  value={externalDriveUrl}
+                  onChange={(e) => setExternalDriveUrl(e.target.value)}
+                  placeholder="https://drive.google.com/..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  หากท่านนำไฟล์ไปวางไว้ใน Google Drive แล้ว สามารถคัดลอกลิงก์มาวางในช่องนี้ได้ทันที
+                </p>
+              </div>
+
               {/* Submission Note */}
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
-                  บันทึกการดำเนินงาน / ข้อความสรุปผลงาน
+                  3. บันทึกการดำเนินงาน / ข้อความสรุปผลงาน
                 </label>
                 <textarea
                   rows={3}

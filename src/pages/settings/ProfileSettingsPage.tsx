@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   User,
   Shield,
@@ -12,18 +12,64 @@ import {
   Lock,
   Eye,
   EyeOff,
+  Sparkles,
+  Camera,
+  Check,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/services/supabase'
+import { updateUserProfile } from '@/services/userService'
+import { PRESET_AVATARS, getAvatarUrl } from '@/utils/avatarUtils'
 
 export const ProfileSettingsPage: React.FC = () => {
   const { profile, role, user, refreshProfile } = useAuth()
 
+  // Profile Edit State
+  const [editName, setEditName] = useState('')
+  const [editAvatarUrl, setEditAvatarUrl] = useState('')
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
+
+  // Password Change State
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [isUpdating, setIsUpdating] = useState(false)
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
+
+  // Feedback Notification
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  useEffect(() => {
+    if (profile) {
+      setEditName(profile.name || '')
+      setEditAvatarUrl(profile.avatar_url || '')
+    }
+  }, [profile])
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user?.id) return
+    setFeedback(null)
+
+    const clean = editName.trim()
+    if (!clean) {
+      setFeedback({ type: 'error', message: 'กรุณากรอกชื่อ-นามสกุล' })
+      return
+    }
+
+    setIsSavingProfile(true)
+    const res = await updateUserProfile(user.id, {
+      name: clean,
+      avatar_url: editAvatarUrl.trim() || null,
+    })
+    setIsSavingProfile(false)
+
+    if (res.success) {
+      setFeedback({ type: 'success', message: 'อัปเดตข้อมูลโปรไฟล์เรียบร้อยแล้ว' })
+      if (refreshProfile) refreshProfile()
+    } else {
+      setFeedback({ type: 'error', message: res.error || 'ไม่สามารถบันทึกข้อมูลได้' })
+    }
+  }
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,7 +85,7 @@ export const ProfileSettingsPage: React.FC = () => {
       return
     }
 
-    setIsUpdating(true)
+    setIsUpdatingPassword(true)
     try {
       const { error } = await supabase.auth.updateUser({
         password: newPassword,
@@ -52,7 +98,6 @@ export const ProfileSettingsPage: React.FC = () => {
         setNewPassword('')
         setConfirmPassword('')
 
-        // Log action
         if (user?.id) {
           await supabase.from('activity_logs').insert({
             user_id: user.id,
@@ -61,7 +106,6 @@ export const ProfileSettingsPage: React.FC = () => {
             target_id: user.id,
           })
 
-          // Update last_password_change in profiles
           await supabase
             .from('profiles')
             .update({ last_password_change: new Date().toISOString() })
@@ -76,7 +120,7 @@ export const ProfileSettingsPage: React.FC = () => {
       const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน'
       setFeedback({ type: 'error', message })
     } finally {
-      setIsUpdating(false)
+      setIsUpdatingPassword(false)
     }
   }
 
@@ -86,10 +130,10 @@ export const ProfileSettingsPage: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
           <User className="h-6 w-6 text-blue-600" />
-          <span>ข้อมูลส่วนตัวและการตั้งค่าความปลอดภัย</span>
+          <span>ข้อมูลส่วนตัวและการตั้งค่าบัญชี</span>
         </h1>
         <p className="text-sm text-slate-600 mt-1">
-          ตรวจสอบข้อมูลบัญชีผู้ใช้งาน และเปลี่ยนรหัสผ่านส่วนตัวสำหรับเข้าสู่ระบบ
+          ปรับแต่งรูปโปรไฟล์ ชื่อผู้ใช้ และเปลี่ยนรหัสผ่านส่วนตัวสำหรับเข้าสู่ระบบ
         </p>
       </div>
 
@@ -115,16 +159,22 @@ export const ProfileSettingsPage: React.FC = () => {
         {/* Left Column: Profile Card */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
           <div className="flex flex-col items-center text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-2xl font-bold text-white shadow-lg shadow-blue-600/15 mb-3">
-              {profile?.name ? profile.name.charAt(0) : '?'}
+            <div className="relative mb-3">
+              <img
+                src={getAvatarUrl(profile?.avatar_url, profile?.name)}
+                alt={profile?.name || 'User'}
+                className="h-24 w-24 rounded-full object-cover border-3 border-purple-200 bg-white shadow-lg shadow-purple-500/15"
+              />
+              <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-emerald-400 ring-2 ring-white" />
             </div>
+
             <h2 className="text-base font-bold text-slate-900">{profile?.name}</h2>
             <p className="text-xs text-blue-600 font-mono mt-0.5">@{profile?.username}</p>
 
             <span
               className={`mt-2.5 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold ${
                 role === 'admin'
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  ? 'bg-purple-50 text-purple-700 border border-purple-200'
                   : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
               }`}
             >
@@ -166,81 +216,180 @@ export const ProfileSettingsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Change Password Card */}
-        <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
-          <div className="border-b border-slate-100 pb-4">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Key className="h-4 w-4 text-blue-600" />
-              <span>เปลี่ยนรหัสผ่านด้วยตนเอง</span>
-            </h2>
-            <p className="text-xs text-slate-600 mt-1">
-              กำหนดรหัสผ่านใหม่ของคุณ เพื่อความปลอดภัยในการเข้าใช้งานระบบ
-            </p>
-          </div>
+        {/* Right Column: Profile Edit & Password Change */}
+        <div className="md:col-span-2 space-y-6">
+          {/* Card 1: Edit Profile Name & Avatar */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+            <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Camera className="h-4 w-4 text-purple-600" />
+                  <span>แก้ไขข้อมูลโปรไฟล์และเลือกรูปอวตาร</span>
+                </h2>
+                <p className="text-xs text-slate-600 mt-1">
+                  แก้ไขชื่อ-นามสกุลที่แสดงผลในระบบ และเลือกรูปโปรไฟล์ของคุณ
+                </p>
+              </div>
+            </div>
 
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)
-              </label>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                  <Lock className="h-4 w-4 text-slate-400" />
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  ชื่อ-นามสกุล (สำหรับแสดงในระบบ) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="เช่น คุณครูสมศรี รักการสอน"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Avatar Selector */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-2">
+                  เลือกรูปโปรไฟล์ / อวตารที่คุณชอบ
+                </label>
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3">
+                  {PRESET_AVATARS.map((av) => {
+                    const isSelected = editAvatarUrl === av.url
+                    return (
+                      <button
+                        key={av.id}
+                        type="button"
+                        onClick={() => setEditAvatarUrl(av.url)}
+                        title={av.name}
+                        className={`relative rounded-xl p-1 border-2 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-purple-600 bg-purple-50 ring-2 ring-purple-200'
+                            : 'border-slate-200 hover:border-purple-300 bg-white'
+                        }`}
+                      >
+                        <img
+                          src={av.url}
+                          alt={av.name}
+                          className="h-10 w-10 mx-auto rounded-full object-cover"
+                        />
+                        {isSelected && (
+                          <div className="absolute top-0 right-0 bg-purple-600 text-white rounded-full p-0.5 shadow-xs">
+                            <Check className="h-2.5 w-2.5" />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mb-1">
+                  <Sparkles className="h-3 w-3 text-purple-500" />
+                  <span>หรือใส่ URL รูปภาพโปรไฟล์ที่คุณต้องการ:</span>
                 </div>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="กรอกรหัสผ่านใหม่..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none"
+                  type="url"
+                  value={editAvatarUrl}
+                  onChange={(e) => setEditAvatarUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:border-purple-500 focus:outline-none"
                 />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end">
                 <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm hover:bg-purple-700 disabled:opacity-50 transition-all cursor-pointer"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {isSavingProfile ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>กำลังบันทึกข้อมูล...</span>
+                    </>
+                  ) : (
+                    <span>บันทึกการแก้ไขโปรไฟล์</span>
+                  )}
                 </button>
               </div>
+            </form>
+          </div>
+
+          {/* Card 2: Change Password */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+            <div className="border-b border-slate-100 pb-4">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Key className="h-4 w-4 text-blue-600" />
+                <span>เปลี่ยนรหัสผ่านด้วยตนเอง</span>
+              </h2>
+              <p className="text-xs text-slate-600 mt-1">
+                กำหนดรหัสผ่านใหม่ของคุณ เพื่อความปลอดภัยในการเข้าใช้งานระบบ
+              </p>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                ยืนยันรหัสผ่านใหม่
-              </label>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                  <Lock className="h-4 w-4 text-slate-400" />
+            <form onSubmit={handlePasswordChange} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                    <Lock className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="กรอกรหัสผ่านใหม่..."
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="กรอกยืนยันรหัสผ่านใหม่อีกครั้ง..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none"
-                />
               </div>
-            </div>
 
-            <div className="pt-3 border-t border-slate-100 flex justify-end">
-              <button
-                type="submit"
-                disabled={isUpdating}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 transition-all cursor-pointer"
-              >
-                {isUpdating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>กำลังบันทึกรหัสผ่านใหม่...</span>
-                  </>
-                ) : (
-                  <span>บันทึกรหัสผ่านใหม่</span>
-                )}
-              </button>
-            </div>
-          </form>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  ยืนยันรหัสผ่านใหม่
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                    <Lock className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="กรอกยืนยันรหัสผ่านใหม่อีกครั้ง..."
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isUpdatingPassword}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {isUpdatingPassword ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>กำลังบันทึกรหัสผ่านใหม่...</span>
+                    </>
+                  ) : (
+                    <span>บันทึกรหัสผ่านใหม่</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>

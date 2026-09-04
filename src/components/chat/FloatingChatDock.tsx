@@ -1,0 +1,405 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import {
+  MessageSquare,
+  Minimize2,
+  Send,
+  Loader2,
+  Volume2,
+  VolumeX,
+  ExternalLink,
+} from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
+import {
+  fetchAccessibleChannels,
+  fetchChannelMessages,
+  sendChatMessage,
+  subscribeToChannelMessages,
+  type ChatChannelWithGroup,
+  type ChatMessageWithSender,
+} from '@/services/chatService'
+import { supabase } from '@/services/supabase'
+import { getAvatarUrl } from '@/utils/avatarUtils'
+
+export const FloatingChatDock: React.FC = () => {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // Do not render dock if already on full /chat page
+  const isFullChatPage = location.pathname.startsWith('/chat')
+
+  const [isOpen, setIsOpen] = useState(false)
+  const [channels, setChannels] = useState<ChatChannelWithGroup[]>([])
+  const [activeChannel, setActiveChannel] = useState<ChatChannelWithGroup | null>(null)
+  const [messages, setMessages] = useState<ChatMessageWithSender[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [unreadMap, setUnreadMap] = useState<Record<string, number>>({})
+  const [newMessage, setNewMessage] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // Web Audio Synthesizer bell
+  const playChime = useCallback(() => {
+    if (!soundEnabled) return
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = new AudioCtx()
+      const now = ctx.currentTime
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(880, now)
+      osc.frequency.exponentialRampToValueAtTime(1318.5, now + 0.12)
+      gain.gain.setValueAtTime(0.18, now)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(now)
+      osc.stop(now + 0.4)
+    } catch {
+      // Audio might be muted
+    }
+  }, [soundEnabled])
+
+  // Scroll container strictly without moving window
+  const scrollToBottom = () => {
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTop = chatScrollContainerRef.current.scrollHeight
+    }
+  }
+
+  // Check unreads
+  const refreshUnreads = useCallback(async (channelList: ChatChannelWithGroup[]) => {
+    let total = 0
+    const map: Record<string, number> = {}
+    for (const ch of channelList) {
+      const lastRead = localStorage.getItem(`chat_last_read_${ch.id}`)
+      let q = supabase
+        .from('chat_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('channel_id', ch.id)
+      if (lastRead) q = q.gt('created_at', lastRead)
+      const { count } = await q
+      const c = count || 0
+      map[ch.id] = c
+      total += c
+    }
+    setUnreadMap(map)
+    setUnreadCount(total)
+  }, [])
+
+  // Load channels
+  useEffect(() => {
+    if (!user?.id) return
+    let isMounted = true
+    fetchAccessibleChannels().then((res) => {
+      if (isMounted && res.data && res.data.length > 0) {
+        setChannels(res.data)
+        setActiveChannel((prev) => prev || res.data![0])
+        refreshUnreads(res.data)
+      }
+    })
+    return () => { isMounted = false }
+  }, [user?.id, refreshUnreads])
+
+  // Load messages when channel active and dock open
+  useEffect(() => {
+    if (!activeChannel || !isOpen) return
+    let isMounted = true
+
+    // Mark active channel as read
+    localStorage.setItem(`chat_last_read_${activeChannel.id}`, new Date().toISOString())
+    setUnreadMap((prev) => ({ ...prev, [activeChannel.id]: 0 }))
+
+    fetchChannelMessages(activeChannel.id).then((res) => {
+      if (isMounted && res.data) {
+        setMessages(res.data)
+        setTimeout(scrollToBottom, 50)
+      }
+    })
+
+    const unsubscribe = subscribeToChannelMessages(activeChannel.id, () => {
+      fetchChannelMessages(activeChannel.id).then((res) => {
+        if (isMounted && res.data) {
+          setMessages(res.data)
+          localStorage.setItem(`chat_last_read_${activeChannel.id}`, new Date().toISOString())
+          setTimeout(scrollToBottom, 50)
+        }
+      })
+    })
+
+    return () => {
+      isMounted = false
+      unsubscribe()
+    }
+  }, [activeChannel, isOpen])
+
+  // Global realtime incoming message detector for dock
+  useEffect(() => {
+    if (!user?.id) return
+    const channel = supabase
+      .channel('floating-chat-incoming')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        (payload) => {
+          const newMsg = payload.new as { sender_id: string; channel_id: string }
+          if (newMsg.sender_id === user.id) return
+
+          // Play sound
+          playChime()
+
+          // If docked and chatting in this channel, append
+          if (isOpen && activeChannel?.id === newMsg.channel_id) {
+            localStorage.setItem(`chat_last_read_${newMsg.channel_id}`, new Date().toISOString())
+          } else {
+            // Increment unread count
+            setUnreadMap((prev) => ({ ...prev, [newMsg.channel_id]: (prev[newMsg.channel_id] || 0) + 1 }))
+            setUnreadCount((prev) => prev + 1)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [user?.id, activeChannel?.id, isOpen, playChime])
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const text = newMessage.trim()
+    if (!text || !activeChannel || !user?.id || isSending) return
+
+    setIsSending(true)
+    const res = await sendChatMessage(activeChannel.id, user.id, text)
+    setIsSending(false)
+
+    if (res.success) {
+      setNewMessage('')
+      fetchChannelMessages(activeChannel.id).then((m) => {
+        if (m.data) setMessages(m.data)
+        setTimeout(scrollToBottom, 50)
+      })
+    }
+  }
+
+  const handleOpenFullChat = () => {
+    setIsOpen(false)
+    if (activeChannel) {
+      navigate(`/chat?channel=${activeChannel.id}`)
+    } else {
+      navigate('/chat')
+    }
+  }
+
+  if (isFullChatPage) {
+    return null
+  }
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50">
+      {/* Floating Window (Expanded) */}
+      {isOpen ? (
+        <div className="w-[350px] sm:w-[380px] h-[480px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-3 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="relative">
+                <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-white">
+                  <MessageSquare className="h-4 w-4" />
+                </div>
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-purple-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold truncate leading-tight">
+                  {activeChannel?.name || 'ห้องสื่อสาร'}
+                </p>
+                <p className="text-[10px] text-purple-200 truncate">
+                  {activeChannel?.user_groups?.name || 'สื่อสารเรียลไทม์'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 text-purple-100">
+              <button
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+                className="p-1.5 rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
+              >
+                {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5 text-purple-300" />}
+              </button>
+
+              <button
+                onClick={handleOpenFullChat}
+                title="เปิดหน้าต่างเต็ม"
+                className="p-1.5 rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </button>
+
+              <button
+                onClick={() => setIsOpen(false)}
+                title="ย่อหน้าต่างแชท"
+                className="p-1.5 rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
+              >
+                <Minimize2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Channel Selector Chips Bar */}
+          {channels.length > 1 && (
+            <div className="bg-slate-50 border-b border-slate-200 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {channels.map((ch) => {
+                const isSelected = activeChannel?.id === ch.id
+                const unread = unreadMap[ch.id] || 0
+                return (
+                  <button
+                    key={ch.id}
+                    onClick={() => {
+                      setActiveChannel(ch)
+                      localStorage.setItem(`chat_last_read_${ch.id}`, new Date().toISOString())
+                      setUnreadMap((prev) => ({ ...prev, [ch.id]: 0 }))
+                    }}
+                    className={`text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>{ch.name}</span>
+                    {unread > 0 && !isSelected && (
+                      <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.2 rounded-full font-bold">
+                        {unread}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Messages Scroll Container (Isolated from window scroll) */}
+          <div
+            ref={chatScrollContainerRef}
+            className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-slate-50/50 text-xs"
+          >
+            {messages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 py-8 text-center">
+                <MessageSquare className="h-8 w-8 text-slate-300 mb-2" />
+                <p className="font-medium text-slate-500">ยังไม่มีข้อความในห้องนี้</p>
+                <p className="text-[11px] text-slate-400">ทักทายคุณครูและเพื่อนร่วมงานได้เลย</p>
+              </div>
+            ) : (
+              messages.map((msg) => {
+                const isMe = msg.sender_id === user?.id
+                const senderName = msg.profiles?.name || 'เพื่อนร่วมงาน'
+                const avatar = getAvatarUrl(msg.profiles?.avatar_url, senderName)
+                const timeStr = new Date(msg.created_at).toLocaleTimeString('th-TH', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {!isMe && (
+                      <img
+                        src={avatar}
+                        alt={senderName}
+                        className="h-6 w-6 rounded-full border border-slate-200 bg-white shrink-0 object-cover mb-0.5"
+                      />
+                    )}
+                    <div className={`max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
+                      {!isMe && (
+                        <p className="text-[10px] text-slate-500 font-semibold mb-0.5 pl-1">
+                          {senderName}
+                        </p>
+                      )}
+                      <div
+                        className={`rounded-2xl px-3 py-1.5 break-words ${
+                          isMe
+                            ? 'bg-purple-600 text-white rounded-br-xs shadow-xs'
+                            : 'bg-white text-slate-800 border border-slate-200/80 rounded-bl-xs shadow-xs'
+                        }`}
+                      >
+                        <p className="leading-relaxed">{msg.content}</p>
+                      </div>
+                      <p className={`text-[9px] text-slate-400 mt-0.5 ${isMe ? 'text-right pr-1' : 'pl-1'}`}>
+                        {timeStr}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Footer: Input Form */}
+          <form
+            onSubmit={handleSendMessage}
+            className="p-2.5 bg-white border-t border-slate-200 flex items-center gap-1.5"
+          >
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="พิมพ์ข้อความ..."
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+            />
+            <button
+              type="submit"
+              disabled={isSending || !newMessage.trim()}
+              className="h-8 w-8 rounded-xl bg-purple-600 text-white flex items-center justify-center hover:bg-purple-700 disabled:opacity-40 transition-colors cursor-pointer shrink-0"
+            >
+              {isSending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </form>
+        </div>
+      ) : (
+        /* Floating Launcher Pill/Button (Collapsed) - Classic Facebook Style */
+        <button
+          onClick={() => {
+            setIsOpen(true)
+            if (activeChannel) {
+              localStorage.setItem(`chat_last_read_${activeChannel.id}`, new Date().toISOString())
+              setUnreadMap((prev) => ({ ...prev, [activeChannel.id]: 0 }))
+              setUnreadCount(0)
+            }
+          }}
+          className="group flex items-center gap-2.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white pl-3.5 pr-4 py-2.5 shadow-xl shadow-purple-600/30 hover:from-purple-500 hover:to-indigo-500 transition-all cursor-pointer border-2 border-white hover:scale-105"
+          title="เปิดห้องสื่อสาร"
+        >
+          <div className="relative">
+            <MessageSquare className="h-5 w-5 text-white" />
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
+            </span>
+          </div>
+
+          <span className="text-xs font-bold tracking-tight">
+            ห้องสื่อสาร
+          </span>
+
+          {unreadCount > 0 && (
+            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-xs">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </button>
+      )}
+    </div>
+  )
+}

@@ -4,6 +4,9 @@ import {
   UserPlus,
   Search,
   Key,
+  Edit2,
+  Camera,
+  Check,
   ShieldAlert,
   Power,
   Trash2,
@@ -26,7 +29,9 @@ import {
   resetPassword,
   toggleUserActive,
   deleteUser,
+  updateUserProfile,
 } from '@/services/userService'
+import { PRESET_AVATARS, getAvatarUrl } from '@/utils/avatarUtils'
 
 export const UserManagementPage: React.FC = () => {
   const { user: currentUser } = useAuth()
@@ -43,6 +48,13 @@ export const UserManagementPage: React.FC = () => {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [targetUser, setTargetUser] = useState<ProfileWithGroup | null>(null)
+  // Edit Profile modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editRole, setEditRole] = useState<UserRole>('teacher')
+  const [editGroupId, setEditGroupId] = useState<string>('')
+  const [editAvatarUrl, setEditAvatarUrl] = useState<string>('')
+
 
   // Feedback notification
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -113,6 +125,45 @@ export const UserManagementPage: React.FC = () => {
   const totalCount = users.length
   const activeCount = users.filter((u) => u.active).length
   const inactiveCount = users.filter((u) => !u.active).length
+
+  const handleOpenEditModal = (u: ProfileWithGroup) => {
+    setTargetUser(u)
+    setEditName(u.name)
+    setEditRole(u.role)
+    setEditGroupId(u.group_id || '')
+    setEditAvatarUrl(u.avatar_url || '')
+    setFormError(null)
+    setIsEditModalOpen(true)
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!targetUser) return
+    setFormError(null)
+
+    const cleanName = editName.trim()
+    if (!cleanName) {
+      setFormError('กรุณาระบุชื่อ-นามสกุล')
+      return
+    }
+
+    setIsSubmitting(true)
+    const res = await updateUserProfile(targetUser.id, {
+      name: cleanName,
+      role: editRole,
+      group_id: editGroupId || null,
+      avatar_url: editAvatarUrl.trim() || null,
+    })
+    setIsSubmitting(false)
+
+    if (res.success) {
+      setIsEditModalOpen(false)
+      setFeedback({ type: 'success', message: `อัปเดตข้อมูลคุณครู ${cleanName} เรียบร้อยแล้ว` })
+      loadData()
+    } else {
+      setFormError(res.error || 'ไม่สามารถอัปเดตข้อมูลได้')
+    }
+  }
 
   const handleOpenCreateModal = () => {
     setNewUsername('')
@@ -394,9 +445,11 @@ export const UserManagementPage: React.FC = () => {
                   <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-4 py-3 font-semibold text-slate-900">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
-                          {u.name.charAt(0)}
-                        </div>
+                        <img
+                          src={getAvatarUrl(u.avatar_url, u.name)}
+                          alt={u.name}
+                          className="h-8 w-8 rounded-full object-cover border border-slate-200 bg-white shrink-0"
+                        />
                         <div>
                           <span>{u.name}</span>
                           {u.id === currentUser?.id && (
@@ -447,6 +500,15 @@ export const UserManagementPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {/* Edit Profile */}
+                        <button
+                          onClick={() => handleOpenEditModal(u)}
+                          title="แก้ไขข้อมูลโปรไฟล์ครู"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-purple-700 hover:border-purple-300 hover:bg-purple-50 transition-colors cursor-pointer"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+
                         {/* Reset Password */}
                         <button
                           onClick={() => handleOpenResetModal(u)}
@@ -488,6 +550,167 @@ export const UserManagementPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      
+      {/* ===================================================================== */}
+      {/* Modal: Edit User Profile */}
+      {/* ===================================================================== */}
+      {isEditModalOpen && targetUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Edit2 className="h-5 w-5 text-purple-600" />
+                <span>แก้ไขข้อมูลคุณครู / บุคลากร</span>
+              </h2>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              {formError && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+                  <span>{formError}</span>
+                </div>
+              )}
+
+              {/* Avatar Selector */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-2 flex items-center gap-1.5">
+                  <Camera className="h-3.5 w-3.5 text-purple-600" />
+                  <span>รูปโปรไฟล์ / อวตารของคุณครู</span>
+                </label>
+                <div className="flex items-center gap-4 mb-3">
+                  <img
+                    src={getAvatarUrl(editAvatarUrl, editName)}
+                    alt={editName}
+                    className="h-14 w-14 rounded-full object-cover border-2 border-purple-300 bg-white shadow-sm"
+                  />
+                  <div className="text-xs text-slate-500">
+                    <p className="font-semibold text-slate-800">{editName || 'ชื่อคุณครู'}</p>
+                    <p className="text-[11px] text-slate-400">@{targetUser.username}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-2">
+                  {PRESET_AVATARS.map((av) => {
+                    const isSelected = editAvatarUrl === av.url
+                    return (
+                      <button
+                        key={av.id}
+                        type="button"
+                        onClick={() => setEditAvatarUrl(av.url)}
+                        title={av.name}
+                        className={`relative rounded-xl p-1 border-2 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-purple-600 bg-purple-50 ring-2 ring-purple-200'
+                            : 'border-slate-200 hover:border-purple-300 bg-white'
+                        }`}
+                      >
+                        <img
+                          src={av.url}
+                          alt={av.name}
+                          className="h-9 w-9 mx-auto rounded-full object-cover"
+                        />
+                        {isSelected && (
+                          <div className="absolute top-0 right-0 bg-purple-600 text-white rounded-full p-0.5 shadow-xs">
+                            <Check className="h-2 w-2" />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <input
+                  type="url"
+                  value={editAvatarUrl}
+                  onChange={(e) => setEditAvatarUrl(e.target.value)}
+                  placeholder="หรือใส่ URL รูปภาพโปรไฟล์..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  ชื่อ-นามสกุล <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="เช่น ครูสมชาย ใจดี"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-purple-600 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    บทบาท (Role)
+                  </label>
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value as UserRole)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:bg-white focus:border-purple-600 focus:outline-none"
+                  >
+                    <option value="teacher">คุณครู (Teacher)</option>
+                    <option value="admin">ผู้ดูแลระบบ (Admin)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    กลุ่มสาระการเรียนรู้
+                  </label>
+                  <select
+                    value={editGroupId}
+                    onChange={(e) => setEditGroupId(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:bg-white focus:border-purple-600 focus:outline-none"
+                  >
+                    <option value="">-- ไม่ระบุกลุ่ม --</option>
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-purple-700 disabled:opacity-50 cursor-pointer transition-colors"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>กำลังบันทึก...</span>
+                    </>
+                  ) : (
+                    <span>บันทึกการแก้ไข</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ===================================================================== */}
       {/* Modal: Create User */}

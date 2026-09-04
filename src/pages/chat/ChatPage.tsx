@@ -22,6 +22,7 @@ import {
   type ChatMessageWithSender,
 } from '@/services/chatService'
 import { supabase } from '@/services/supabase'
+import { getAvatarUrl } from '@/utils/avatarUtils'
 
 export const ChatPage: React.FC = () => {
   const { user, isAdmin } = useAuth()
@@ -37,10 +38,12 @@ export const ChatPage: React.FC = () => {
   const [newMessage, setNewMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
 
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const chatMessagesContainerRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (chatMessagesContainerRef.current) {
+      chatMessagesContainerRef.current.scrollTop = chatMessagesContainerRef.current.scrollHeight
+    }
   }
 
   // Mark channel as read
@@ -308,7 +311,7 @@ export const ChatPage: React.FC = () => {
         )}
 
         {/* Messages List */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+        <div ref={chatMessagesContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {isLoadingMessages ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-400 text-xs">
               <Loader2 className="h-6 w-6 animate-spin text-blue-600 mb-2" />
@@ -331,15 +334,11 @@ export const ChatPage: React.FC = () => {
                   className={`flex items-start gap-2.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
                 >
                   {/* Sender Avatar */}
-                  <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                      isMe
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-slate-700 border border-slate-200 shadow-2xs'
-                    }`}
-                  >
-                    {sender?.name ? sender.name.charAt(0) : '?'}
-                  </div>
+                  <img
+                    src={getAvatarUrl(sender?.avatar_url, sender?.name)}
+                    alt={sender?.name || 'User'}
+                    className="h-8 w-8 shrink-0 rounded-full object-cover border border-slate-200 bg-white"
+                  />
 
                   {/* Message Bubble Container */}
                   <div className={`flex flex-col max-w-[75%] sm:max-w-[65%] ${isMe ? 'items-end' : 'items-start'}`}>
@@ -386,7 +385,6 @@ export const ChatPage: React.FC = () => {
               )
             })
           )}
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Bar */}

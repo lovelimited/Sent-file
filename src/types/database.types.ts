@@ -151,6 +151,7 @@ export interface Database {
           priority: TaskPriority
           status: TaskStatus
           subtasks?: Json | null
+          drive_folder_url?: string | null
           created_at: string
           updated_at: string
         }
@@ -165,6 +166,7 @@ export interface Database {
           priority?: TaskPriority
           status?: TaskStatus
           subtasks?: Json | null
+          drive_folder_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -179,6 +181,7 @@ export interface Database {
           priority?: TaskPriority
           status?: TaskStatus
           subtasks?: Json | null
+          drive_folder_url?: string | null
           created_at?: string
           updated_at?: string
         }
