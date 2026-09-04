@@ -153,10 +153,11 @@ export async function deleteGroup(id: string): Promise<{ success: boolean; error
 }
 
 /**
- * Create user through privileged Edge Function
+ * Create user through privileged Edge Function (with RPC fallback)
  */
 export async function createUser(payload: CreateUserPayload): Promise<{ success: boolean; error?: string }> {
   try {
+    // 1. Try Edge Function
     const { data, error } = await supabase.functions.invoke('manage-users', {
       body: {
         action: 'create_user',
@@ -164,12 +165,29 @@ export async function createUser(payload: CreateUserPayload): Promise<{ success:
       },
     })
 
-    if (error) {
-      return { success: false, error: data?.error || error.message }
+    if (!error && !data?.error) {
+      return { success: true }
     }
 
-    if (data?.error) {
+    if (!error && data?.error) {
       return { success: false, error: data.error }
+    }
+
+    // 2. Database RPC Fallback (Security Definer with Admin check)
+    const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('admin_create_user', {
+      p_username: payload.username,
+      p_name: payload.name,
+      p_role: payload.role,
+      p_group_id: payload.group_id || null,
+      p_password: payload.password,
+    })
+
+    if (rpcError) {
+      return { success: false, error: rpcError.message }
+    }
+
+    if (rpcData && typeof rpcData === 'object' && 'error' in rpcData) {
+      return { success: false, error: (rpcData as { error: string }).error }
     }
 
     return { success: true }
@@ -180,10 +198,11 @@ export async function createUser(payload: CreateUserPayload): Promise<{ success:
 }
 
 /**
- * Reset user password through privileged Edge Function
+ * Reset user password through privileged Edge Function (with RPC fallback)
  */
 export async function resetPassword(userId: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
   try {
+    // 1. Try Edge Function
     const { data, error } = await supabase.functions.invoke('manage-users', {
       body: {
         action: 'reset_password',
@@ -192,12 +211,26 @@ export async function resetPassword(userId: string, newPassword: string): Promis
       },
     })
 
-    if (error) {
-      return { success: false, error: data?.error || error.message }
+    if (!error && !data?.error) {
+      return { success: true }
     }
 
-    if (data?.error) {
+    if (!error && data?.error) {
       return { success: false, error: data.error }
+    }
+
+    // 2. Database RPC Fallback
+    const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('admin_reset_password', {
+      p_user_id: userId,
+      p_new_password: newPassword,
+    })
+
+    if (rpcError) {
+      return { success: false, error: rpcError.message }
+    }
+
+    if (rpcData && typeof rpcData === 'object' && 'error' in rpcData) {
+      return { success: false, error: (rpcData as { error: string }).error }
     }
 
     return { success: true }
@@ -208,10 +241,11 @@ export async function resetPassword(userId: string, newPassword: string): Promis
 }
 
 /**
- * Toggle user active/inactive status through privileged Edge Function
+ * Toggle user active/inactive status through privileged Edge Function (with RPC fallback)
  */
 export async function toggleUserActive(userId: string, active: boolean): Promise<{ success: boolean; error?: string }> {
   try {
+    // 1. Try Edge Function
     const { data, error } = await supabase.functions.invoke('manage-users', {
       body: {
         action: 'toggle_active',
@@ -220,12 +254,26 @@ export async function toggleUserActive(userId: string, active: boolean): Promise
       },
     })
 
-    if (error) {
-      return { success: false, error: data?.error || error.message }
+    if (!error && !data?.error) {
+      return { success: true }
     }
 
-    if (data?.error) {
+    if (!error && data?.error) {
       return { success: false, error: data.error }
+    }
+
+    // 2. Database RPC Fallback
+    const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('admin_toggle_active', {
+      p_user_id: userId,
+      p_active: active,
+    })
+
+    if (rpcError) {
+      return { success: false, error: rpcError.message }
+    }
+
+    if (rpcData && typeof rpcData === 'object' && 'error' in rpcData) {
+      return { success: false, error: (rpcData as { error: string }).error }
     }
 
     return { success: true }
@@ -236,10 +284,11 @@ export async function toggleUserActive(userId: string, active: boolean): Promise
 }
 
 /**
- * Delete user through privileged Edge Function
+ * Delete user through privileged Edge Function (with RPC fallback)
  */
 export async function deleteUser(userId: string): Promise<{ success: boolean; error?: string }> {
   try {
+    // 1. Try Edge Function
     const { data, error } = await supabase.functions.invoke('manage-users', {
       body: {
         action: 'delete_user',
@@ -247,12 +296,25 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; er
       },
     })
 
-    if (error) {
-      return { success: false, error: data?.error || error.message }
+    if (!error && !data?.error) {
+      return { success: true }
     }
 
-    if (data?.error) {
+    if (!error && data?.error) {
       return { success: false, error: data.error }
+    }
+
+    // 2. Database RPC Fallback
+    const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('admin_delete_user', {
+      p_user_id: userId,
+    })
+
+    if (rpcError) {
+      return { success: false, error: rpcError.message }
+    }
+
+    if (rpcData && typeof rpcData === 'object' && 'error' in rpcData) {
+      return { success: false, error: (rpcData as { error: string }).error }
     }
 
     return { success: true }

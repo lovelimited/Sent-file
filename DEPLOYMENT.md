@@ -12,22 +12,22 @@
                     │
        ┌────────────┴────────────┐
        ▼                         ▼
-[ Supabase Edge Functions ]   [ Supabase PostgreSQL ]
-  - auth-login (Bridge)         - Row Level Security (RLS)
-  - manage-users (Admin API)    - Realtime WebSockets (Chat & Notif)
-                                - Storage & Resource Links
+[ Supabase Edge Functions / RPC ] [ Supabase PostgreSQL ]
+  - auth-login (Direct / Edge)      - Row Level Security (RLS)
+  - manage-users (RPC / Edge API)   - Realtime WebSockets (Chat & Notif)
+                                    - Storage & Resource Links
 ```
 
 * **Frontend**: Single Page Application (Vite + React 19 + TypeScript + Tailwind CSS v4 + PWA)
 * **Backend Database**: Supabase PostgreSQL พร้อมระบบความปลอดภัย **Row Level Security (RLS)** และ Audit Logs
-* **Security Bridge**: Supabase Edge Functions (Deno) สำหรับซ่อน Internal Email และจำกัดสิทธิ์ Admin
+* **Administrative Bridge**: Database RPC (Security Definer) และ Supabase Edge Functions (Deno) สำหรับบริหารจัดการครูและผู้ใช้โดยไม่เปิดเผย Service Role Key
 
 ---
 
 ## 2. สิ่งที่ต้องเตรียม (Prerequisites)
 
 1. บัญชี [Supabase](https://supabase.com) (สร้าง New Project เช่น `school-work-hub`)
-2. ติดตั้ง [Supabase CLI](https://supabase.com/docs/guides/cli) บนเครื่องผู้ดูแลระบบ
+2. ติดตั้ง [Supabase CLI](https://supabase.com/docs/guides/cli) บนเครื่องผู้ดูแลระบบ (กรณีต้องการ Deploy Edge Functions)
 3. บัญชีโฮสติ้งสำหรับ Frontend เช่น [Cloudflare Pages](https://pages.cloudflare.com/), [Vercel](https://vercel.com/), หรือเว็บเซิร์ฟเวอร์ Nginx ของโรงเรียน
 
 ---
@@ -42,21 +42,20 @@
 2. supabase/migrations/20260903000002_tasks_and_workflow.sql
 3. supabase/migrations/20260903000003_chat_and_notifications.sql
 4. supabase/migrations/20260903000004_drive_and_exports.sql
-5. supabase/seed.sql (ข้อมูลเริ่มต้นกลุ่มสาระฯ และห้องสื่อสาร)
+5. supabase/migrations/20260904000001_admin_user_management_rpc.sql   # จัดการผู้ใช้ผ่าน Database RPC
+6. supabase/migrations/20260904000002_activity_logs_insert_policy.sql  # นโยบายบันทึกประวัติการใช้งาน
+7. supabase/seed.sql (ข้อมูลเริ่มต้นกลุ่มสาระฯ และห้องสื่อสาร)
 ```
 
 > [!TIP]
-> **หากใช้ Supabase CLI:**
-> ```bash
-> supabase link --project-ref <your-project-id>
-> supabase db push
-> ```
+> **ระบบรองรับ Database RPC ในตัว (Zero-Configuration):**
+> ไฟล์ Migration ข้อ 5 ได้สร้างฟังก์ชันความปลอดภัยสูง `admin_create_user`, `admin_reset_password`, `admin_toggle_active`, `admin_delete_user` ไว้ในฐานข้อมูล PostgreSQL เรียบร้อยแล้ว ทำให้ระบบสามารถสร้างครูใหม่และจัดการบัญชีได้ทันที 100% โดยไม่จำเป็นต้อง Deploy Edge Functions เพิ่มเติม
 
 ---
 
-## 4. ขั้นตอนการ Deploy Supabase Edge Functions
+## 4. ตัวเลือกการ Deploy Supabase Edge Functions (Optional)
 
-ระบบมี Edge Functions จำนวน 2 ตัวที่ต้อง Deploy:
+หากต้องการใช้งานสถาปัตยกรรม Edge Functions ร่วมด้วย (ระบบมี Fallback อัตโนมัติ):
 1. `auth-login`: เชื่อม Username เข้ากับระบบ Authenticate พร้อมซ่อนอีเมลภายใน
 2. `manage-users`: จัดการสร้างครูใหม่, รีเซ็ตรหัสผ่าน, ระงับบัญชี และลบบัญชี
 
@@ -64,37 +63,30 @@
 # 1. ล็อกอิน Supabase CLI
 supabase login
 
-# 2. Deploy Edge Functions
+# 2. Deploy Edge Functions (ถ้าต้องการ)
 supabase functions deploy auth-login --project-ref <your-project-id>
 supabase functions deploy manage-users --project-ref <your-project-id>
 
-# 3. ตั้งค่า Secrets ให้ Edge Functions (จำเป็นสำหรับ manage-users)
+# 3. ตั้งค่า Secrets ให้ Edge Functions
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key> --project-ref <your-project-id>
 ```
 
 ---
 
-## 5. การสร้างบัญชีผู้ดูแลระบบคนแรก (Initial Super Admin)
+## 5. บัญชีผู้ดูแลระบบและบัญชีทดสอบ (Default Accounts)
 
-1. ไปที่ **Supabase Dashboard > Authentication > Users**
-2. กด **Add User > Create User**
-   * **Email**: `admin@school.local` (หรือ username ที่ต้องการตามด้วย `@school.local`)
-   * **Password**: กำหนดรหัสผ่านเริ่มต้นที่ปลอดภัย
-   * ติ๊ก **Auto Confirm User**
-3. ไปที่ **Supabase Dashboard > SQL Editor** และรันคำสั่งยกระดับสิทธิ์เป็นผู้ดูแลระบบ (Admin):
+สำหรับโปรเจกต์ที่เชื่อมต่อเรียบร้อยแล้ว:
+* **ผู้ดูแลระบบ (Super Admin):**
+  * **ชื่อผู้ใช้งาน (Username)**: `admin`
+  * **รหัสผ่าน (Password)**: `Admin1234!`
+  * **บทบาท (Role)**: ผู้ดูแลระบบโรงเรียน (เข้าถึงได้ทุกเมนู)
+* **ครูผู้สอนตัวอย่าง (Teacher):**
+  * **ชื่อผู้ใช้งาน (Username)**: `teacher_thai`
+  * **รหัสผ่าน (Password)**: `Teacher1234!`
+  * **กลุ่มสาระฯ**: ภาษาไทย
 
-```sql
-UPDATE public.profiles
-SET
-  role = 'admin',
-  name = 'ผู้ดูแลระบบโรงเรียน (Super Admin)',
-  active = true
-WHERE username = 'admin';
-```
-
-4. ทดสอบเข้าสู่ระบบผ่านหน้าเว็บด้วย:
-   * **ชื่อผู้ใช้งาน (Username)**: `admin`
-   * **รหัสผ่าน (Password)**: ตามที่ตั้งไว้ในข้อ 2
+> [!TIP]
+> หากต้องการเปลี่ยนรหัสผ่าน สามารถทำได้โดยตรงผ่านหน้า **"จัดการข้อมูลครูและบุคลากร" (`/admin/users`)** หรือหน้า **"โปรไฟล์และการตั้งค่า" (`/settings`)**
 
 ---
 
@@ -115,7 +107,8 @@ VITE_SUPABASE_ANON_KEY=<your-anon-public-key>
 ```bash
 npm run build
 ```
-ผลลัพธ์จะถูกบันทึกไว้ในโฟลเดอร์ `dist/` ซึ่งพร้อมสำหรับการนำขึ้น Web Server หรือ Static Host
+ผลลัพธ์จะถูกบันทึกไว้ในโฟลเดอร์ `dist/` ซึ่งพร้อมสำหรับการนำขึ้น Web Server หรือ Static Host ทันที
+*(ไฟล์ `public/_redirects` สำหรับ Cloudflare Pages และ `vercel.json` สำหรับ Vercel ได้รับการติดตั้งไว้แล้วเพื่อรองรับ SPA Routing ไม่ให้เกิด Error 404 เมื่อ Refresh)*
 
 ### 7.1 ตัวเลือก A: Deploy บน Cloudflare Pages (แนะนำ - ฟรี & เร็วมากในไทย)
 1. เชื่อมต่อ Git Repository กับ Cloudflare Pages
@@ -151,12 +144,16 @@ server {
 
 ## 8. การทดสอบความปลอดภัย RLS (Automated Verification)
 
-ก่อนเปิดให้ครูเข้าใช้งานจริง ให้รันสคริปต์ตรวจสอบความปลอดภัยใน **Supabase SQL Editor**:
+ก่อนเปิดให้ครูเข้าใช้งานจริง สามารถรันสคริปต์ตรวจสอบความปลอดภัยใน **Supabase SQL Editor**:
 
 ```sql
 -- รันไฟล์นี้เพื่อตรวจสอบ RLS ครบทั้ง 8 ตาราง
 -- ระบบจะทดสอบและ Rollback อัตโนมัติโดยไม่ทิ้งข้อมูลขยะ
 \i supabase/tests/test_full_system_rls.sql
+```
+หรือรันผ่าน Node.js ในเครื่องพัฒนา:
+```bash
+node scripts/test-rls.cjs
 ```
 ผลลัพธ์จะต้องขึ้นข้อความ `PASSED` ครบทั้ง 6 การทดสอบหลัก
 

@@ -32,13 +32,18 @@ begin
   select id into v_group1_id from public.user_groups where name = 'ภาษาไทย' limit 1;
   select id into v_group2_id from public.user_groups where name = 'คณิตศาสตร์' limit 1;
 
-  -- Create test profiles
-  insert into public.profiles (id, username, name, role, group_id, active)
+  -- Create mock auth.users for FK integrity
+  insert into auth.users (id, email, role, is_sso_user, is_anonymous, raw_user_meta_data)
   values
-    (v_admin_id, 'test_admin', 'ผู้ดูแลระบบ ทดสอบ', 'admin', null, true),
-    (v_teacher1_id, 'test_teacher1', 'คุณครู ทดสอบ หนึ่ง', 'teacher', v_group1_id, true),
-    (v_teacher2_id, 'test_teacher2', 'คุณครู ทดสอบ สอง', 'teacher', v_group2_id, true)
+    (v_admin_id, 'test_admin@school.local', 'authenticated', false, false, '{"username":"test_admin","name":"ผู้ดูแลระบบ ทดสอบ","role":"admin"}'::jsonb),
+    (v_teacher1_id, 'test_teacher1@school.local', 'authenticated', false, false, '{"username":"test_teacher1","name":"คุณครู ทดสอบ หนึ่ง","role":"teacher"}'::jsonb),
+    (v_teacher2_id, 'test_teacher2@school.local', 'authenticated', false, false, '{"username":"test_teacher2","name":"คุณครู ทดสอบ สอง","role":"teacher"}'::jsonb)
   on conflict (id) do nothing;
+
+  -- Update test profiles to match test requirements
+  update public.profiles set role = 'admin', group_id = null where id = v_admin_id;
+  update public.profiles set role = 'teacher', group_id = v_group1_id where id = v_teacher1_id;
+  update public.profiles set role = 'teacher', group_id = v_group2_id where id = v_teacher2_id;
 
   -- Create test identity for teacher 1
   insert into public.auth_identities (user_id, username)
@@ -53,6 +58,7 @@ begin
   -- ----------------------------------------------------------------------------
   -- TEST 1: auth_identities (MUST BE INVISIBLE TO CLIENTS)
   -- ----------------------------------------------------------------------------
+  perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claim.sub', v_teacher1_id::text, true);
   perform set_config('request.jwt.claim.role', 'authenticated', true);
 
@@ -142,6 +148,8 @@ begin
   -- ----------------------------------------------------------------------------
   -- TEST 6: drive_resources GROUP ACCESS
   -- ----------------------------------------------------------------------------
+  -- Admin creates drive resource for group 1 (Thai)
+  perform set_config('request.jwt.claim.sub', v_admin_id::text, true);
   insert into public.drive_resources (title, category, url, group_id)
   values ('เอกสารเฉพาะกลุ่มภาษาไทย', 'folder', 'https://drive.google.com/test-thai', v_group1_id);
 

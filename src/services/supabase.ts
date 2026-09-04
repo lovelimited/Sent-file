@@ -8,7 +8,8 @@ export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
   supabaseAnonKey &&
   !supabaseUrl.includes('your-project-ref') &&
-  !supabaseAnonKey.includes('your-anon-key')
+  !supabaseAnonKey.includes('your-anon-key') &&
+  !supabaseUrl.includes('placeholder')
 )
 
 if (!isSupabaseConfigured) {

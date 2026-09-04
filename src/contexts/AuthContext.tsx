@@ -103,32 +103,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true)
 
     try {
-      // 1. Invoke the privileged auth-login Edge Function
+      // 1. Try invoking the privileged auth-login Edge Function
       const { data, error } = await supabase.functions.invoke('auth-login', {
         body: { username: normalizedUsername, password },
       })
 
-      if (error) {
-        let errorMessage = 'เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบข้อมูล'
-        try {
-          if (data && typeof data === 'object' && 'error' in data) {
-            errorMessage = (data as { error: string }).error
-          } else if (error.message) {
-            errorMessage = error.message
-          }
-        } catch {
-          // ignore parsing error
-        }
-        setIsLoading(false)
-        return { success: false, error: errorMessage }
-      }
-
-      if (data?.error) {
-        setIsLoading(false)
-        return { success: false, error: data.error }
-      }
-
-      if (data?.session) {
+      if (!error && data?.session) {
         // Set received session tokens in browser client
         const { error: setSessionError } = await supabase.auth.setSession({
           access_token: data.session.access_token,
@@ -144,6 +124,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProfile(data.profile)
         }
 
+        setIsLoading(false)
+        return { success: true }
+      }
+
+      if (!error && data?.error) {
+        setIsLoading(false)
+        return { success: false, error: data.error }
+      }
+
+      // 2. Graceful Fallback: Direct Supabase Auth using internal email pattern <username>@school.local
+      const directEmail = `${normalizedUsername}@school.local`
+      const { data: directAuth, error: directAuthError } = await supabase.auth.signInWithPassword({
+        email: directEmail,
+        password,
+      })
+
+      if (directAuthError) {
+        setIsLoading(false)
+        return { success: false, error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' }
+      }
+
+      if (directAuth.session) {
+        const userProfile = await fetchProfile(directAuth.session.user.id)
+        if (userProfile && !userProfile.active) {
+          await supabase.auth.signOut()
+          setIsLoading(false)
+          return { success: false, error: 'บัญชีผู้ใช้งานนี้ถูกระงับการใช้งาน' }
+        }
+        setProfile(userProfile)
+        setSession(directAuth.session)
+        setUser(directAuth.user)
         setIsLoading(false)
         return { success: true }
       }
