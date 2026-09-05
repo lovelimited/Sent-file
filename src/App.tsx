@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { PresenceProvider } from '@/contexts/PresenceContext'
 import { Layout } from '@/components/layout/Layout'
@@ -31,9 +31,6 @@ const ActivityLogsPage = lazy(() =>
 )
 const ProfileSettingsPage = lazy(() =>
   import('@/pages/settings/ProfileSettingsPage').then((m) => ({ default: m.ProfileSettingsPage }))
-)
-const AnnouncementFeedPage = lazy(() =>
-  import('@/pages/feed/AnnouncementFeedPage').then((m) => ({ default: m.AnnouncementFeedPage }))
 )
 const TaskOverviewPage = lazy(() =>
   import('@/pages/admin/TaskOverviewPage').then((m) => ({ default: m.TaskOverviewPage }))
@@ -119,14 +116,10 @@ export const App: React.FC = () => {
                 }
               />
 
-              {/* Announcements Feed Route */}
+              {/* Announcements Feed Route: Redirects to Home (/) (Item 2) */}
               <Route
                 path="announcements"
-                element={
-                  <ProtectedRoute>
-                    <AnnouncementFeedPage />
-                  </ProtectedRoute>
-                }
+                element={<Navigate to="/" replace />}
               />
 
               {/* Admin-Only Protected Routes */}

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import {
-  TableProperties,
   Printer,
   Download,
   Filter,
@@ -12,6 +11,7 @@ import {
   Loader2,
   Users,
   ClipboardList,
+  PieChart,
 } from 'lucide-react'
 import { supabase } from '@/services/supabase'
 import { fetchAdminTasks, type AdminTaskItem } from '@/services/taskService'
@@ -150,17 +150,30 @@ export const TaskOverviewPage: React.FC = () => {
     })
   })
 
+  // Calculate total assignments & proportions (Item 3)
+  const totalAssignments = approvedCount + submittedCount + pendingCount
+  const approvedPercent = totalAssignments > 0 ? Math.round((approvedCount / totalAssignments) * 100) : 0
+  const submittedPercent = totalAssignments > 0 ? Math.round((submittedCount / totalAssignments) * 100) : 0
+  const pendingPercent = totalAssignments > 0 ? Math.max(0, 100 - approvedPercent - submittedPercent) : 0
+
+  // Donut geometry (R = 58, C ~ 364.425)
+  const donutR = 58
+  const donutC = 2 * Math.PI * donutR
+  const approvedStroke = (approvedPercent / 100) * donutC
+  const submittedStroke = (submittedPercent / 100) * donutC
+  const pendingStroke = (pendingPercent / 100) * donutC
+
   return (
     <div className="space-y-6">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
-            <TableProperties className="h-6 w-6 text-emerald-600" />
-            <span>ตารางภาพรวมการส่งงานของครู</span>
+            <PieChart className="h-6 w-6 text-emerald-600" />
+            <span>แดชบอร์ดภาพรวมการส่งงานของครู</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            สรุปสถานะการส่งภาระงานของครูทุกคนในโรงเรียน แยกตามภาระงานและกลุ่มสาระฯ
+            วิเคราะห์สัดส่วนความก้าวหน้าทั้งโรงเรียน และตารางติดตามสถานะการส่งภาระงานของครูทุกคน
           </p>
         </div>
 
@@ -179,6 +192,165 @@ export const TaskOverviewPage: React.FC = () => {
             <Printer className="h-3.5 w-3.5" />
             <span>พิมพ์ / ส่งออก PDF</span>
           </button>
+        </div>
+      </div>
+
+      {/* Circular Proportion Chart Card (ข้อ 3) */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs print:hidden">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg bg-emerald-100 p-1.5 text-emerald-700">
+              <PieChart className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">กราฟวงกลมแสดงสัดส่วนการส่งภาระงานทั้งโรงเรียน</h2>
+              <p className="text-[11px] text-slate-500">สัดส่วนตามสถานะการส่งและการอนุมัติงานของครูทุกคน</p>
+            </div>
+          </div>
+          <span className="hidden sm:inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200/60">
+            มอบหมายรวม {totalAssignments} รายการ
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          {/* Donut Chart Display */}
+          <div className="lg:col-span-5 flex flex-col items-center justify-center relative py-2">
+            <div className="relative w-44 h-44 flex items-center justify-center">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 140 140">
+                {/* Background Ring */}
+                <circle
+                  cx="70"
+                  cy="70"
+                  r={donutR}
+                  fill="transparent"
+                  stroke="#f1f5f9"
+                  strokeWidth="16"
+                />
+
+                {/* Approved Segment (Green) */}
+                {approvedPercent > 0 && (
+                  <circle
+                    cx="70"
+                    cy="70"
+                    r={donutR}
+                    fill="transparent"
+                    stroke="#10b981"
+                    strokeWidth="16"
+                    strokeDasharray={`${approvedStroke} ${donutC}`}
+                    strokeDashoffset={0}
+                    strokeLinecap="round"
+                    className="transition-all duration-700 ease-out"
+                  />
+                )}
+
+                {/* Submitted Segment (Amber) */}
+                {submittedPercent > 0 && (
+                  <circle
+                    cx="70"
+                    cy="70"
+                    r={donutR}
+                    fill="transparent"
+                    stroke="#f59e0b"
+                    strokeWidth="16"
+                    strokeDasharray={`${submittedStroke} ${donutC}`}
+                    strokeDashoffset={-approvedStroke}
+                    strokeLinecap="round"
+                    className="transition-all duration-700 ease-out"
+                  />
+                )}
+
+                {/* Pending Segment (Rose/Red) */}
+                {pendingPercent > 0 && (
+                  <circle
+                    cx="70"
+                    cy="70"
+                    r={donutR}
+                    fill="transparent"
+                    stroke="#fb7185"
+                    strokeWidth="16"
+                    strokeDasharray={`${pendingStroke} ${donutC}`}
+                    strokeDashoffset={-(approvedStroke + submittedStroke)}
+                    strokeLinecap="round"
+                    className="transition-all duration-700 ease-out"
+                  />
+                )}
+              </svg>
+
+              {/* Center Metrics */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center select-none pointer-events-none">
+                <span className="text-3xl font-black text-slate-900 tracking-tight leading-none">
+                  {approvedPercent}%
+                </span>
+                <span className="text-[10px] font-bold text-emerald-700 mt-1 uppercase tracking-wider">
+                  อนุมัติแล้ว
+                </span>
+                <span className="text-[9px] text-slate-400">
+                  {approvedCount}/{totalAssignments}
+                </span>
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-2 font-medium">สัดส่วนความสำเร็จภาพรวม</p>
+          </div>
+
+          {/* Proportions Breakdown Bars */}
+          <div className="lg:col-span-7 space-y-3.5">
+            {/* Approved Bar */}
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span>ผ่านการอนุมัติแล้ว (Approved)</span>
+                </span>
+                <span className="font-bold text-emerald-800">
+                  {approvedCount} รายการ ({approvedPercent}%)
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-emerald-200/60 overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-700"
+                  style={{ width: `${approvedPercent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Submitted Bar */}
+            <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3">
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="font-bold text-amber-900 flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" />
+                  <span>ส่งแล้วรอตรวจสอบ (Submitted)</span>
+                </span>
+                <span className="font-bold text-amber-800">
+                  {submittedCount} รายการ ({submittedPercent}%)
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-amber-200/60 overflow-hidden">
+                <div
+                  className="h-full bg-amber-500 rounded-full transition-all duration-700"
+                  style={{ width: `${submittedPercent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Pending Bar */}
+            <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-3">
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="font-bold text-rose-900 flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-rose-400 shrink-0" />
+                  <span>ยังไม่ส่ง / รอส่งงาน (Pending)</span>
+                </span>
+                <span className="font-bold text-rose-800">
+                  {pendingCount} รายการ ({pendingPercent}%)
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-rose-200/60 overflow-hidden">
+                <div
+                  className="h-full bg-rose-400 rounded-full transition-all duration-700"
+                  style={{ width: `${pendingPercent}%` }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

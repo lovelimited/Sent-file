@@ -19,9 +19,16 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { fetchTeacherTasks, type TeacherTaskItem } from '@/services/taskService'
 import type { SubtaskItem, AssignmentStatus, TaskPriority } from '@/types/index'
+import { TaskOverviewPage } from '@/pages/admin/TaskOverviewPage'
 
 export const DashboardPage: React.FC = () => {
-  const { user, profile } = useAuth()
+  const { user, profile, isAdmin } = useAuth()
+
+  // Requirement 3: Admin dashboard is the school-wide TaskOverviewPage with circular proportion chart
+  if (isAdmin) {
+    return <TaskOverviewPage />
+  }
+
   const [tasks, setTasks] = useState<TeacherTaskItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'submitted' | 'approved'>('all')

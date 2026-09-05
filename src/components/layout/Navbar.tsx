@@ -14,8 +14,6 @@ import {
   Settings,
   HelpCircle,
   ChevronDown,
-  Megaphone,
-  TableProperties,
   PieChart,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -81,7 +79,7 @@ export const Navbar: React.FC = () => {
           {isAuthenticated && profile ? (
             <>
               {/* Desktop Navigation Links */}
-              <div className="hidden md:flex items-center gap-1 text-xs font-medium">
+              <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 text-xs font-medium">
                 <Link
                   to="/"
                   className={`rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
@@ -93,60 +91,60 @@ export const Navbar: React.FC = () => {
                   หน้าหลัก
                 </Link>
 
-                {/* Announcement Feed Link */}
-                <Link
-                  to="/announcements"
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
-                    location.pathname === '/announcements'
-                      ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Megaphone className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>ข่าวประกาศ</span>
-                </Link>
+                {/* Admin Links */}
+                {isAdmin ? (
+                  <>
+                    <Link
+                      to="/admin/overview"
+                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                        location.pathname === '/admin/overview' || location.pathname === '/dashboard'
+                          ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      <PieChart className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>แดชบอร์ดภาพรวม</span>
+                    </Link>
 
-                {/* Personal Dashboard Link (ข้อ 17) */}
-                <Link
-                  to="/dashboard"
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
-                    location.pathname === '/dashboard'
-                      ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <PieChart className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>แดชบอร์ด</span>
-                </Link>
+                    <Link
+                      to="/admin/tasks"
+                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                        location.pathname === '/admin/tasks'
+                          ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      <ClipboardList className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>จัดการภาระงาน</span>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    {/* Teacher Links */}
+                    <Link
+                      to="/dashboard"
+                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                        location.pathname === '/dashboard'
+                          ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      <PieChart className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>แดชบอร์ดภาระงาน</span>
+                    </Link>
 
-                {/* Teacher Task link */}
-                {!isAdmin && (
-                  <Link
-                    to="/tasks"
-                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
-                      location.pathname === '/tasks'
-                        ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    <CheckSquare className="h-3.5 w-3.5" />
-                    <span>ภาระงานของฉัน</span>
-                  </Link>
-                )}
-
-                {/* Admin Task Management link */}
-                {isAdmin && (
-                  <Link
-                    to="/admin/tasks"
-                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
-                      location.pathname === '/admin/tasks'
-                        ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    <ClipboardList className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>จัดการภาระงาน</span>
-                  </Link>
+                    <Link
+                      to="/tasks"
+                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                        location.pathname === '/tasks'
+                          ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      <CheckSquare className="h-3.5 w-3.5" />
+                      <span>ภาระงานของฉัน</span>
+                    </Link>
+                  </>
                 )}
 
                 {/* Chat link */}
@@ -193,23 +191,7 @@ export const Navbar: React.FC = () => {
                     </button>
 
                     {isAdminDropdownOpen && (
-                      <div className="absolute right-0 mt-1 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150">
-                        <Link
-                          to="/admin/overview"
-                          onClick={() => setIsAdminDropdownOpen(false)}
-                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors ${
-                            location.pathname === '/admin/overview'
-                              ? 'bg-emerald-50 text-emerald-800 font-semibold'
-                              : 'text-slate-700 hover:bg-slate-50'
-                          }`}
-                        >
-                          <TableProperties className="h-4 w-4 text-emerald-600" />
-                          <div>
-                            <p className="font-medium leading-tight">ตารางภาพรวมการส่งงาน</p>
-                            <p className="text-[10px] text-slate-400">สรุปสถานะครูทุกคน & พิมพ์ PDF</p>
-                          </div>
-                        </Link>
-
+                      <div className="absolute right-0 mt-1 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150">
                         <Link
                           to="/admin/users"
                           onClick={() => setIsAdminDropdownOpen(false)}
@@ -357,84 +339,83 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile Sub-Navigation */}
       {isAuthenticated && (
-        <div className="md:hidden flex items-center justify-around border-t border-emerald-100 bg-slate-50 px-2 py-2 text-[11px] overflow-x-auto">
+        <div className="lg:hidden flex items-center justify-around border-t border-emerald-100 bg-slate-50 px-2 py-2 text-[11px] overflow-x-auto no-scrollbar gap-1">
           <Link
             to="/"
-            className={`px-2 py-1 rounded-md whitespace-nowrap ${
-              location.pathname === '/' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
+            className={`px-2.5 py-1 rounded-md whitespace-nowrap ${
+              location.pathname === '/' ? 'text-emerald-800 font-semibold bg-emerald-100/60' : 'text-slate-600'
             }`}
           >
             หน้าหลัก
           </Link>
-          <Link
-            to="/announcements"
-            className={`px-2 py-1 rounded-md whitespace-nowrap ${
-              location.pathname === '/announcements' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
-            }`}
-          >
-            ข่าวสาร
-          </Link>
-          <Link
-            to="/dashboard"
-            className={`px-2 py-1 rounded-md whitespace-nowrap ${
-              location.pathname === '/dashboard' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
-            }`}
-          >
-            แดชบอร์ด
-          </Link>
-          {!isAdmin && (
-            <Link
-              to="/tasks"
-              className={`px-2 py-1 rounded-md whitespace-nowrap ${
-                location.pathname === '/tasks' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
-              }`}
-            >
-              งานของฉัน
-            </Link>
+
+          {isAdmin ? (
+            <>
+              <Link
+                to="/admin/overview"
+                className={`px-2.5 py-1 rounded-md whitespace-nowrap ${
+                  location.pathname === '/admin/overview' || location.pathname === '/dashboard'
+                    ? 'text-emerald-800 font-semibold bg-emerald-100/60'
+                    : 'text-slate-600'
+                }`}
+              >
+                แดชบอร์ดภาพรวม
+              </Link>
+              <Link
+                to="/admin/tasks"
+                className={`px-2.5 py-1 rounded-md whitespace-nowrap ${
+                  location.pathname === '/admin/tasks' ? 'text-emerald-800 font-semibold bg-emerald-100/60' : 'text-slate-600'
+                }`}
+              >
+                จัดการงาน
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/dashboard"
+                className={`px-2.5 py-1 rounded-md whitespace-nowrap ${
+                  location.pathname === '/dashboard' ? 'text-emerald-800 font-semibold bg-emerald-100/60' : 'text-slate-600'
+                }`}
+              >
+                แดชบอร์ด
+              </Link>
+              <Link
+                to="/tasks"
+                className={`px-2.5 py-1 rounded-md whitespace-nowrap ${
+                  location.pathname === '/tasks' ? 'text-emerald-800 font-semibold bg-emerald-100/60' : 'text-slate-600'
+                }`}
+              >
+                งานของฉัน
+              </Link>
+            </>
           )}
+
           <Link
             to="/chat"
-            className={`px-2 py-1 rounded-md whitespace-nowrap ${
-              location.pathname === '/chat' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
+            className={`px-2.5 py-1 rounded-md whitespace-nowrap ${
+              location.pathname === '/chat' ? 'text-emerald-800 font-semibold bg-emerald-100/60' : 'text-slate-600'
             }`}
           >
             แชท
           </Link>
           <Link
             to="/drive"
-            className={`px-2 py-1 rounded-md whitespace-nowrap ${
-              location.pathname === '/drive' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
+            className={`px-2.5 py-1 rounded-md whitespace-nowrap ${
+              location.pathname === '/drive' ? 'text-emerald-800 font-semibold bg-emerald-100/60' : 'text-slate-600'
             }`}
           >
             Drive
           </Link>
           {isAdmin && (
-            <>
-              <Link
-                to="/admin/overview"
-                className={`px-2 py-1 rounded-md whitespace-nowrap ${
-                  location.pathname === '/admin/overview' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
-                }`}
-              >
-                ภาพรวม
-              </Link>
-              <Link
-                to="/admin/tasks"
-                className={`px-2 py-1 rounded-md whitespace-nowrap ${
-                  location.pathname === '/admin/tasks' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
-                }`}
-              >
-                จัดการงาน
-              </Link>
-              <Link
-                to="/admin/users"
-                className={`px-2 py-1 rounded-md whitespace-nowrap ${
-                  location.pathname === '/admin/users' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
-                }`}
-              >
-                จัดการครู
-              </Link>
-            </>
+            <Link
+              to="/admin/users"
+              className={`px-2.5 py-1 rounded-md whitespace-nowrap ${
+                location.pathname === '/admin/users' ? 'text-emerald-800 font-semibold bg-emerald-100/60' : 'text-slate-600'
+              }`}
+            >
+              จัดการครู
+            </Link>
           )}
         </div>
       )}

@@ -17,6 +17,8 @@ import {
   fetchChannelMessages,
   sendChatMessage,
   subscribeToChannelMessages,
+  fetchChannelsLastMessageTimes,
+  sortChannelsByLatestMessage,
   type ChatChannelWithGroup,
   type ChatMessageWithSender,
 } from '@/services/chatService'
@@ -33,6 +35,7 @@ export const FloatingChatDock: React.FC = () => {
 
   const [isOpen, setIsOpen] = useState(false)
   const [channels, setChannels] = useState<ChatChannelWithGroup[]>([])
+  const [, setLastMessageMap] = useState<Record<string, string>>({})
   const [activeChannel, setActiveChannel] = useState<ChatChannelWithGroup | null>(null)
   const [messages, setMessages] = useState<ChatMessageWithSender[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -97,18 +100,25 @@ export const FloatingChatDock: React.FC = () => {
     setUnreadCount(total)
   }, [])
 
-  // Load channels
+  // Load channels with latest active sorting (Requirement 5)
   useEffect(() => {
     if (!user?.id) return
     let isMounted = true
-    fetchAccessibleChannels().then((res) => {
-      if (isMounted && res.data && res.data.length > 0) {
-        setChannels(res.data)
+
+    Promise.all([
+      fetchAccessibleChannels(),
+      fetchChannelsLastMessageTimes(),
+    ]).then(([channelsRes, timesMap]) => {
+      if (isMounted && channelsRes.data && channelsRes.data.length > 0) {
+        setLastMessageMap(timesMap)
+        const sorted = sortChannelsByLatestMessage(channelsRes.data, timesMap)
+        setChannels(sorted)
+
         // Requirement 2: Show latest active group
         const savedChannelId = localStorage.getItem('last_active_chat_channel')
-        const initial = res.data.find((c) => c.id === savedChannelId) || res.data[0]
+        const initial = sorted.find((c) => c.id === savedChannelId) || sorted[0]
         setActiveChannel(initial)
-        refreshUnreads(res.data)
+        refreshUnreads(sorted)
       }
     })
     return () => { isMounted = false }
@@ -146,7 +156,7 @@ export const FloatingChatDock: React.FC = () => {
     }
   }, [activeChannel, isOpen])
 
-  // Global realtime incoming message detector for dock
+  // Global realtime incoming message detector for dock & dynamic sorting (Requirement 5)
   useEffect(() => {
     if (!user?.id) return
     const channel = supabase
@@ -155,7 +165,17 @@ export const FloatingChatDock: React.FC = () => {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         (payload) => {
-          const newMsg = payload.new as { sender_id: string; channel_id: string }
+          const newMsg = payload.new as { sender_id: string; channel_id: string; created_at: string }
+
+          // Update latest message timestamp & re-sort channels dynamically
+          if (newMsg?.channel_id) {
+            setLastMessageMap((prev) => {
+              const updated = { ...prev, [newMsg.channel_id]: newMsg.created_at || new Date().toISOString() }
+              setChannels((prevCh) => sortChannelsByLatestMessage(prevCh, updated))
+              return updated
+            })
+          }
+
           if (newMsg.sender_id === user.id) return
 
           // Play sound (ข้อ 1)
@@ -198,6 +218,11 @@ export const FloatingChatDock: React.FC = () => {
 
     if (res.success) {
       setNewMessage('')
+      setLastMessageMap((prev) => {
+        const updated = { ...prev, [activeChannel.id]: new Date().toISOString() }
+        setChannels((prevCh) => sortChannelsByLatestMessage(prevCh, updated))
+        return updated
+      })
       fetchChannelMessages(activeChannel.id).then((m) => {
         if (m.data) setMessages(m.data)
         setTimeout(scrollToBottom, 50)
@@ -219,10 +244,11 @@ export const FloatingChatDock: React.FC = () => {
   }
 
   return (
-    <div className="fixed bottom-20 sm:bottom-24 right-4 sm:right-6 z-50">
-      {/* Floating Window (Expanded) */}
+    /* Requirement 4: Lower positioning (bottom-5 sm:bottom-6) so it never blocks or overlaps top */
+    <div className="fixed bottom-5 sm:bottom-6 right-4 sm:right-6 z-50">
+      {/* Floating Window (Expanded) with max height constrained */}
       {isOpen ? (
-        <div className="w-[350px] sm:w-[380px] h-[480px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200">
+        <div className="w-[340px] sm:w-[370px] h-[440px] sm:h-[460px] max-h-[calc(100dvh-5rem)] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200">
           {/* Header */}
           <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-3 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-2 min-w-0">

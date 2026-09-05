@@ -21,6 +21,8 @@ import {
   fetchChannelMessages,
   sendChatMessage,
   subscribeToChannelMessages,
+  fetchChannelsLastMessageTimes,
+  sortChannelsByLatestMessage,
   type ChatChannelWithGroup,
   type ChatMessageWithSender,
 } from '@/services/chatService'
@@ -33,6 +35,7 @@ export const ChatPage: React.FC = () => {
   const targetChannelId = searchParams.get('channel')
 
   const [channels, setChannels] = useState<ChatChannelWithGroup[]>([])
+  const [, setLastMessageMap] = useState<Record<string, string>>({})
   const [activeChannel, setActiveChannel] = useState<ChatChannelWithGroup | null>(null)
   const [messages, setMessages] = useState<ChatMessageWithSender[]>([])
   const [newMessage, setNewMessage] = useState('')
@@ -81,23 +84,29 @@ export const ChatPage: React.FC = () => {
     setUnreadMap(unreads)
   }, [])
 
-  // Load channels on mount
+  // Load channels on mount with latest chat sorting (Requirement 5)
   useEffect(() => {
     let isMounted = true
-    fetchAccessibleChannels().then((res) => {
+
+    Promise.all([
+      fetchAccessibleChannels(),
+      fetchChannelsLastMessageTimes(),
+    ]).then(([res, timesMap]) => {
       if (isMounted && res.data && res.data.length > 0) {
-        setChannels(res.data)
+        setLastMessageMap(timesMap)
+        const sorted = sortChannelsByLatestMessage(res.data, timesMap)
+        setChannels(sorted)
 
         // Requirement 2: Select target channel from query, or latest active from localStorage, or first
         const savedChannelId = localStorage.getItem('last_active_chat_channel')
         const matched = targetChannelId
-          ? res.data.find((c) => c.id === targetChannelId)
-          : (savedChannelId ? res.data.find((c) => c.id === savedChannelId) : null)
-        const initial = matched || res.data[0]
+          ? sorted.find((c) => c.id === targetChannelId)
+          : (savedChannelId ? sorted.find((c) => c.id === savedChannelId) : null)
+        const initial = matched || sorted[0]
 
         setActiveChannel(initial)
         markChannelAsRead(initial.id)
-        checkUnreads(res.data)
+        checkUnreads(sorted)
       }
       if (isMounted) setIsLoadingChannels(false)
     })
@@ -194,12 +203,42 @@ export const ChatPage: React.FC = () => {
     setIsSending(false)
 
     if (res.success) {
+      setLastMessageMap((prev) => {
+        const updated = { ...prev, [activeChannel.id]: new Date().toISOString() }
+        setChannels((prevCh) => sortChannelsByLatestMessage(prevCh, updated))
+        return updated
+      })
       loadMessages(activeChannel.id)
       markChannelAsRead(activeChannel.id)
     } else {
       alert(res.error || 'ไม่สามารถส่งข้อความได้')
     }
   }
+
+  // Global realtime activity listener for dynamic channel sorting (Requirement 5)
+  useEffect(() => {
+    const globalChannel = supabase
+      .channel('chat-page-global-activity')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        (payload) => {
+          const newMsg = payload.new as { channel_id: string; created_at: string }
+          if (newMsg?.channel_id) {
+            setLastMessageMap((prev) => {
+              const updated = { ...prev, [newMsg.channel_id]: newMsg.created_at || new Date().toISOString() }
+              setChannels((prevCh) => sortChannelsByLatestMessage(prevCh, updated))
+              return updated
+            })
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(globalChannel)
+    }
+  }, [])
 
   const renderChannelIcon = (type: string) => {
     switch (type) {

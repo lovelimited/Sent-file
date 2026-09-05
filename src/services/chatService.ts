@@ -142,3 +142,53 @@ export function subscribeToChannelMessages(
     supabase.removeChannel(channel)
   }
 }
+
+/**
+ * Fetch latest message timestamps for all channels (Requirement 5)
+ */
+export async function fetchChannelsLastMessageTimes(): Promise<Record<string, string>> {
+  try {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('channel_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(300)
+
+    if (error || !data) return {}
+
+    const map: Record<string, string> = {}
+    for (const msg of data) {
+      if (!map[msg.channel_id]) {
+        map[msg.channel_id] = msg.created_at
+      }
+    }
+    return map
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Sort channels: School general room pinned at top, followed by latest active channels (Requirement 5)
+ */
+export function sortChannelsByLatestMessage(
+  channels: ChatChannelWithGroup[],
+  lastMessageMap: Record<string, string>
+): ChatChannelWithGroup[] {
+  return [...channels].sort((a, b) => {
+    // 1. General room always pinned at top (#1)
+    const isAGeneral = a.id === '00000000-0000-0000-0000-000000000001' || a.type === 'general'
+    const isBGeneral = b.id === '00000000-0000-0000-0000-000000000001' || b.type === 'general'
+    if (isAGeneral && !isBGeneral) return -1
+    if (!isAGeneral && isBGeneral) return 1
+
+    // 2. Latest chat message first
+    const timeA = lastMessageMap[a.id] ? new Date(lastMessageMap[a.id]).getTime() : 0
+    const timeB = lastMessageMap[b.id] ? new Date(lastMessageMap[b.id]).getTime() : 0
+    if (timeA !== timeB) return timeB - timeA
+
+    // 3. Fallback name sorting
+    return a.name.localeCompare(b.name, 'th')
+  })
+}
+
