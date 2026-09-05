@@ -19,6 +19,7 @@ import {
   Archive,
   File,
   X,
+  Settings,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import type { UserGroup } from '@/types/index'
@@ -64,6 +65,16 @@ export const DriveHubPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
+  const [deletedCategories, setDeletedCategories] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('school_deleted_categories')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+  const [isManageCategoryModalOpen, setIsManageCategoryModalOpen] = useState(false)
+
   const loadData = useCallback(() => {
     setIsLoading(true)
     Promise.all([fetchDriveResources(user?.id, isAdmin), fetchGroups()]).then(([resData, grpData]) => {
@@ -71,23 +82,84 @@ export const DriveHubPage: React.FC = () => {
       if (grpData.data) setGroups(grpData.data)
       setIsLoading(false)
     })
+
+    // Load deleted categories from system_settings
+    supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'deleted_drive_categories')
+      .maybeSingle()
+      .then((res) => {
+        if (res.data?.value) {
+          try {
+            const parsed = JSON.parse(res.data.value)
+            if (Array.isArray(parsed)) {
+              setDeletedCategories(parsed)
+              localStorage.setItem('school_deleted_categories', JSON.stringify(parsed))
+            }
+          } catch {}
+        }
+      })
   }, [user?.id, isAdmin])
 
   useEffect(() => {
     loadData()
   }, [loadData])
 
-  // Extract all unique categories dynamically (ข้อ 1)
+  // Extract all unique categories dynamically (ข้อ 1 & ข้อ 3: คัดประเภทที่ถูกลบออก)
   const allCategories = useMemo(() => {
     const set = new Set<string>()
-    // Add default presets
-    PRESET_CATEGORIES.forEach((p) => set.add(p.name))
-    // Add from existing items
+    // Add default presets that are not deleted
+    PRESET_CATEGORIES.forEach((p) => {
+      if (!deletedCategories.includes(p.name)) {
+        set.add(p.name)
+      }
+    })
+    // Add from existing items that are not deleted
     resources.forEach((r) => {
-      if (r.category) set.add(r.category)
+      if (r.category && !deletedCategories.includes(r.category)) {
+        set.add(r.category)
+      }
     })
     return Array.from(set)
-  }, [resources])
+  }, [resources, deletedCategories])
+
+  const handleDeleteCategory = async (catName: string) => {
+    const matchingCount = resources.filter((r) => r.category === catName).length
+    const confirmed = await showConfirm(
+      `ยืนยันการลบประเภท "${catName}"?`,
+      matchingCount > 0
+        ? `มีทรัพยากรในประเภทนี้ ${matchingCount} รายการ โดยไฟล์จะถูกเปลี่ยนเป็นหมวด "ทั่วไป" ให้โดยอัตโนมัติ`
+        : `ประเภท "${catName}" จะถูกลบออกจากแถบตัวเลือกและระบบ`,
+      'ลบประเภท',
+      'ยกเลิก',
+      true
+    )
+    if (!confirmed) return
+
+    // Reassign resources in database to "ทั่วไป" if any
+    if (matchingCount > 0) {
+      await supabase.from('drive_resources').update({ category: 'ทั่วไป' }).eq('category', catName)
+    }
+
+    const updated = Array.from(new Set([...deletedCategories, catName]))
+    setDeletedCategories(updated)
+    localStorage.setItem('school_deleted_categories', JSON.stringify(updated))
+
+    await supabase.from('system_settings').upsert({
+      key: 'deleted_drive_categories',
+      value: JSON.stringify(updated),
+      updated_at: new Date().toISOString(),
+      updated_by: user?.id,
+    })
+
+    if (activeCategory === catName) {
+      setActiveCategory('all')
+    }
+
+    showToast(`ลบประเภท "${catName}" เรียบร้อยแล้ว`, 'success')
+    loadData()
+  }
 
   const filteredResources = useMemo(() => {
     return resources.filter((item) => {
@@ -409,6 +481,19 @@ export const DriveHubPage: React.FC = () => {
               {catName}
             </button>
           ))}
+
+          {/* Manage Categories Button (Admin only - ข้อ 3) */}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setIsManageCategoryModalOpen(true)}
+              title="จัดการ / ลบประเภททรัพยากรที่ไม่ต้องการ"
+              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 hover:text-emerald-800 hover:bg-emerald-50 transition-colors border border-dashed border-slate-300 shrink-0 cursor-pointer ml-1"
+            >
+              <Settings className="h-3 w-3 text-slate-500" />
+              <span>จัดการประเภท</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -782,6 +867,73 @@ export const DriveHubPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* Modal: Manage Categories (ข้อ 3: ลบประเภททรัพยากรที่ไม่ต้องการ) */}
+      {/* ===================================================================== */}
+      {isManageCategoryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150 flex flex-col overflow-hidden max-h-[85vh]">
+            <div className="flex items-center justify-between border-b border-slate-200 p-4 bg-gradient-to-r from-emerald-50 to-white">
+              <div className="flex items-center gap-2">
+                <div className="rounded-xl bg-emerald-600 p-2 text-white shadow-xs">
+                  <Settings className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">จัดการประเภททรัพยากร</h3>
+                  <p className="text-[11px] text-slate-500">สามารถกดลบประเภทที่ไม่ต้องการใช้งานออกได้</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsManageCategoryModalOpen(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto space-y-2 flex-1">
+              {allCategories.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">ไม่มีประเภททรัพยากรที่เปิดใช้งาน</p>
+              ) : (
+                allCategories.map((catName) => {
+                  const count = resources.filter((r) => r.category === catName).length
+                  return (
+                    <div
+                      key={catName}
+                      className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition-colors"
+                    >
+                      <div>
+                        <p className="text-xs font-semibold text-slate-800">{catName}</p>
+                        <p className="text-[10px] text-slate-400">มีไฟล์ในหมวดนี้ {count} รายการ</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(catName)}
+                        title={`ลบประเภท "${catName}"`}
+                        className="p-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="p-3 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsManageCategoryModalOpen(false)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer shadow-2xs"
+              >
+                เสร็จสิ้น
+              </button>
+            </div>
           </div>
         </div>
       )}

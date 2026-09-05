@@ -15,11 +15,16 @@ import {
   HelpCircle,
   ChevronDown,
   PieChart,
+  Lock,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { UserGuideModal } from '@/components/help/UserGuideModal'
+import { MasterDriveSettingsModal } from '@/components/settings/MasterDriveSettingsModal'
 import { getAvatarUrl } from '@/utils/avatarUtils'
+import { showConfirm, showError } from '@/utils/sweetalert'
+import Swal from 'sweetalert2'
+import { supabase } from '@/services/supabase'
 
 export const Navbar: React.FC = () => {
   const location = useLocation()
@@ -27,6 +32,7 @@ export const Navbar: React.FC = () => {
   const { isAuthenticated, profile, isAdmin, logout } = useAuth()
   const [isGuideOpen, setIsGuideOpen] = useState(false)
   const [isAdminDropdownOpen, setIsAdminDropdownOpen] = useState(false)
+  const [isMasterDriveModalOpen, setIsMasterDriveModalOpen] = useState(false)
   const adminDropdownRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown on outside click
@@ -41,8 +47,43 @@ export const Navbar: React.FC = () => {
   }, [])
 
   const handleLogout = async () => {
+    const confirmed = await showConfirm(
+      'ยืนยันการออกจากระบบ?',
+      'คุณต้องการออกจากระบบ School Work Club ใช่หรือไม่?'
+    )
+    if (!confirmed) return
     await logout()
     navigate('/login', { replace: true, state: null })
+  }
+
+  const handleOpenMasterDrive = async () => {
+    setIsAdminDropdownOpen(false)
+    const { value: pass } = await Swal.fire({
+      title: '🔒 ยืนยันรหัสผ่านแอดมินหลัก',
+      text: 'กรุณาระบุรหัสผ่านบัญชี admin เพื่อเข้าถึงหรือแก้ไข Master Google Drive รวม',
+      input: 'password',
+      inputPlaceholder: 'กรอกรหัสผ่านของคุณ',
+      showCancelButton: true,
+      confirmButtonText: 'ยืนยัน',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#059669',
+      cancelButtonColor: '#64748b',
+    })
+
+    if (!pass) return
+
+    // Verify password with Supabase auth
+    const { error } = await supabase.auth.signInWithPassword({
+      email: `${(profile?.username || 'admin').toLowerCase()}@school.local`,
+      password: pass,
+    })
+
+    if (error) {
+      showError('รหัสผ่านไม่ถูกต้อง', 'ไม่สามารถเข้าถึงหรือแก้ไข Master Google Drive ได้')
+      return
+    }
+
+    setIsMasterDriveModalOpen(true)
   }
 
   const isAdminSubpageActive =
@@ -239,6 +280,24 @@ export const Navbar: React.FC = () => {
                             <p className="text-[10px] text-slate-400">ตรวจสอบ Audit Trail</p>
                           </div>
                         </Link>
+
+                        {/* Master Google Drive (Super Admin only - ข้อ 4) */}
+                        {profile?.username === 'admin' && (
+                          <button
+                            type="button"
+                            onClick={handleOpenMasterDrive}
+                            className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-left transition-colors text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer border-t border-slate-100 mt-1 pt-1.5"
+                          >
+                            <FolderOpen className="h-4 w-4 text-emerald-600 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium leading-tight flex items-center gap-1">
+                                <span>Master Google Drive</span>
+                                <Lock className="h-2.5 w-2.5 text-amber-600" />
+                              </p>
+                              <p className="text-[10px] text-slate-400">โฟลเดอร์รวมโรงเรียน (ยืนยันรหัส)</p>
+                            </div>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -248,20 +307,20 @@ export const Navbar: React.FC = () => {
               {/* Notification Bell */}
               <NotificationBell />
 
-              {/* User details badge */}
-              <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1.5 pr-2.5 sm:pr-3 shrink-0">
+              {/* User details badge - compact to prevent overflow */}
+              <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1.5 pr-2 sm:pr-2.5 shrink-0">
                 <img
                   src={getAvatarUrl(profile.avatar_url, profile.name)}
                   alt={profile.name}
-                  className="h-7 w-7 rounded-full object-cover border border-slate-200 bg-white"
+                  className="h-7 w-7 rounded-full object-cover border border-slate-200 bg-white shrink-0"
                 />
-                <div className="flex flex-col text-left">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-slate-800 truncate max-w-[90px] sm:max-w-[140px]">
+                <div className="flex flex-col text-left min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-semibold text-slate-800 truncate max-w-[65px] sm:max-w-[90px] lg:max-w-[110px] xl:max-w-[140px]">
                       {profile.nickname ? `${profile.name} (${profile.nickname})` : profile.name}
                     </span>
                     <span
-                      className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[10px] font-medium ${
+                      className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[9px] font-medium shrink-0 ${
                         profile.role === 'admin'
                           ? 'bg-purple-100 text-purple-700 border border-purple-200'
                           : 'bg-blue-100 text-blue-700 border border-blue-200'
@@ -272,7 +331,7 @@ export const Navbar: React.FC = () => {
                     </span>
                   </div>
                   {profile.user_groups?.name && (
-                    <span className="text-[10px] text-slate-500 leading-none truncate max-w-[100px]">
+                    <span className="text-[9px] text-slate-500 leading-none truncate max-w-[80px] lg:max-w-[100px] hidden sm:inline">
                       {profile.user_groups.name}
                     </span>
                   )}
@@ -422,6 +481,12 @@ export const Navbar: React.FC = () => {
 
       {/* In-App Interactive User Guide Modal */}
       <UserGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+
+      {/* Master Google Drive Settings Modal (Super Admin only) */}
+      <MasterDriveSettingsModal
+        isOpen={isMasterDriveModalOpen}
+        onClose={() => setIsMasterDriveModalOpen(false)}
+      />
     </header>
   )
 }

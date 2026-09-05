@@ -33,6 +33,7 @@ import {
   type TaskSubmissionItem,
 } from '@/services/taskService'
 import { exportTaskSubmissionsToCSV } from '@/utils/exportUtils'
+import { getMasterDriveUrl } from '@/services/driveService'
 
 export const AdminTasksPage: React.FC = () => {
   const { user } = useAuth()
@@ -63,7 +64,9 @@ export const AdminTasksPage: React.FC = () => {
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([])
   const [dueDate, setDueDate] = useState('')
   const [priority, setPriority] = useState<TaskPriority>('normal')
-  const [driveFolderUrl, setDriveFolderUrl] = useState('https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i')
+  const [taskCategory, setTaskCategory] = useState<string>('แผนการจัดการเรียนรู้')
+  const [masterDriveUrl, setMasterDriveUrl] = useState<string>('https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i')
+  const [driveFolderUrl, setDriveFolderUrl] = useState('')
   const [groupSearchQuery, setGroupSearchQuery] = useState('')
   const [subtasks, setSubtasks] = useState<{ id: string; title: string }[]>([])
   const [newSubtaskInput, setNewSubtaskInput] = useState('')
@@ -111,7 +114,12 @@ export const AdminTasksPage: React.FC = () => {
     setSelectedTeacherIds([])
     setDueDate('')
     setPriority('normal')
-    setDriveFolderUrl('https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i')
+    setTaskCategory('แผนการจัดการเรียนรู้')
+    setDriveFolderUrl('')
+    getMasterDriveUrl().then((url) => {
+      setMasterDriveUrl(url)
+      setDriveFolderUrl(url)
+    })
     setSubtasks([])
     setNewSubtaskInput('')
     setFormError(null)
@@ -176,7 +184,8 @@ export const AdminTasksPage: React.FC = () => {
       priority,
       created_by: user.id,
       subtasks,
-      drive_folder_url: driveFolderUrl.trim() || 'https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i',
+      drive_folder_url: driveFolderUrl.trim() || masterDriveUrl,
+      category: taskCategory,
     })
     setIsSubmitting(false)
 
@@ -715,32 +724,57 @@ export const AdminTasksPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Dedicated Google Drive Task Folder */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-medium text-slate-700">
-                    โฟลเดอร์ Google Drive ประจำภาระงาน (สร้างโฟลเดอร์แยกงาน)
+              {/* Category & Dedicated Google Drive Task Folder (ข้อ 8) */}
+              <div className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/40 p-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-emerald-950 mb-1">
+                    ประเภทหมวดหมู่งาน (สอดคล้องกับคลังไฟล์ & ทรัพยากรโรงเรียน) <span className="text-red-500">*</span>
                   </label>
-                  <a
-                    href="https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center gap-1"
+                  <select
+                    value={taskCategory}
+                    onChange={(e) => setTaskCategory(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 focus:border-emerald-600 focus:outline-none"
                   >
-                    <FolderOpen className="h-3 w-3" />
-                    <span>เปิดไดรฟ์รวมเพื่อสร้างโฟลเดอร์แยก ↗</span>
-                  </a>
+                    <option value="แผนการจัดการเรียนรู้">แผนการจัดการเรียนรู้ (Lesson Plans)</option>
+                    <option value="รายงานผลการปฏิบัติงาน (PA)">รายงานผลการปฏิบัติงาน (PA)</option>
+                    <option value="วิจัยในชั้นเรียนและนวัตกรรม">วิจัยในชั้นเรียนและนวัตกรรม</option>
+                    <option value="เอกสารวัดผลและวิชาการ">เอกสารวัดผลและวิชาการ</option>
+                    <option value="เกียรติบัตรและผลงาน">เกียรติบัตรและผลงาน</option>
+                    <option value="แบบฟอร์มโรงเรียน">แบบฟอร์มโรงเรียน</option>
+                    <option value="งานธุรการและบริหารทั่วไป">งานธุรการและบริหารทั่วไป</option>
+                    <option value="ภาระงานทั่วไป">ภาระงานทั่วไป</option>
+                  </select>
+                  <p className="mt-1 text-[11px] text-emerald-800">
+                    เลือกหมวดหมู่เพื่อให้งานนี้และไฟล์ที่ครูส่งถูกจัดเก็บและเชื่อมโยงเข้าคลังทรัพยากรโรงเรียนอย่างเป็นระเบียบ
+                  </p>
                 </div>
-                <input
-                  type="url"
-                  value={driveFolderUrl}
-                  onChange={(e) => setDriveFolderUrl(e.target.value)}
-                  placeholder="https://drive.google.com/drive/folders/..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-900 focus:bg-white focus:border-blue-600 focus:outline-none"
-                />
-                <p className="mt-1 text-[11px] text-slate-500">
-                  ครูจะได้รับปุ่มเปิดโฟลเดอร์นี้ในหน้าภาระงาน เพื่ออัปโหลดและส่งงานในโฟลเดอร์ของภาระงานนี้โดยตรง
-                </p>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-800">
+                      โฟลเดอร์ Google Drive ประจำภาระงาน (สร้างโฟลเดอร์แยกงาน)
+                    </label>
+                    <a
+                      href={masterDriveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline inline-flex items-center gap-1"
+                    >
+                      <FolderOpen className="h-3 w-3 text-emerald-600" />
+                      <span>เปิด Google Drive กลาง เพื่อสร้างโฟลเดอร์แยกหมวด ↗</span>
+                    </a>
+                  </div>
+                  <input
+                    type="url"
+                    value={driveFolderUrl}
+                    onChange={(e) => setDriveFolderUrl(e.target.value)}
+                    placeholder={masterDriveUrl || "https://drive.google.com/drive/folders/..."}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 focus:border-emerald-600 focus:outline-none"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    ครูจะได้รับปุ่มเปิดโฟลเดอร์นี้ในหน้าภาระงาน เพื่ออัปโหลดและส่งงานในโฟลเดอร์ของภาระงานนี้โดยตรง
+                  </p>
+                </div>
               </div>
 
               {/* Due Date and Priority */}

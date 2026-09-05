@@ -28,6 +28,7 @@ import {
 } from '@/services/chatService'
 import { supabase } from '@/services/supabase'
 import { getAvatarUrl } from '@/utils/avatarUtils'
+import { formatChatDisplayName } from '@/utils/userUtils'
 
 export const ChatPage: React.FC = () => {
   const { user, isAdmin } = useAuth()
@@ -479,7 +480,7 @@ export const ChatPage: React.FC = () => {
                     {/* Sender Name / Group */}
                     <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mb-1 px-1">
                       <span className="font-medium text-slate-700">
-                        {isMe ? 'ฉัน' : sender?.name || 'คุณครู'}
+                        {isMe ? 'ฉัน' : formatChatDisplayName(sender?.name, sender?.role)}
                       </span>
                       {sender?.role === 'admin' && (
                         <span className="inline-flex items-center gap-0.5 rounded bg-purple-100 text-purple-700 px-1.5 py-0.2 text-[9px] font-semibold border border-purple-200">

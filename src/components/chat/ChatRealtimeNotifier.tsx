@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { MessageSquare, X, ArrowRight, Volume2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/services/supabase'
+import { formatChatDisplayName } from '@/utils/userUtils'
 
 interface ActiveToast {
   id: string
@@ -77,11 +78,11 @@ export const ChatRealtimeNotifier: React.FC = () => {
           // Fetch sender and channel names
           try {
             const [senderRes, channelRes] = await Promise.all([
-              supabase.from('profiles').select('name').eq('id', newMsg.sender_id).single(),
+              supabase.from('profiles').select('name, role').eq('id', newMsg.sender_id).single(),
               supabase.from('chat_channels').select('name').eq('id', newMsg.channel_id).single(),
             ])
 
-            const senderName = senderRes.data?.name || 'เพื่อนร่วมงาน'
+            const senderName = formatChatDisplayName(senderRes.data?.name, senderRes.data?.role)
             const channelName = channelRes.data?.name || 'ห้องสื่อสาร'
 
             // Play notification sound

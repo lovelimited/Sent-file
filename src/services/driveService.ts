@@ -173,3 +173,41 @@ export async function deleteDriveResource(
     return { success: false, error: message }
   }
 }
+
+/**
+ * Fetch master Google Drive folder URL from system settings
+ */
+export async function getMasterDriveUrl(): Promise<string> {
+  try {
+    const { data } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'master_google_drive_url')
+      .maybeSingle()
+    if (data?.value) return data.value
+  } catch {}
+  return 'https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i'
+}
+
+/**
+ * Update master Google Drive folder URL in system settings
+ */
+export async function updateMasterDriveUrl(
+  url: string,
+  adminId?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.from('system_settings').upsert({
+      key: 'master_google_drive_url',
+      value: url.trim(),
+      updated_at: new Date().toISOString(),
+      updated_by: adminId,
+    })
+    if (error) return { success: false, error: error.message }
+    return { success: true }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to update master drive url'
+    return { success: false, error: message }
+  }
+}
+

@@ -155,6 +155,7 @@ export interface Database {
           status: TaskStatus
           subtasks?: Json | null
           drive_folder_url?: string | null
+          category?: string | null
           created_at: string
           updated_at: string
         }
@@ -170,6 +171,7 @@ export interface Database {
           status?: TaskStatus
           subtasks?: Json | null
           drive_folder_url?: string | null
+          category?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -185,6 +187,7 @@ export interface Database {
           status?: TaskStatus
           subtasks?: Json | null
           drive_folder_url?: string | null
+          category?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -589,6 +592,27 @@ export interface Database {
             referencedColumns: ['id']
           },
         ]
+      }
+      system_settings: {
+        Row: {
+          key: string
+          value: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          key: string
+          value?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          key?: string
+          value?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {

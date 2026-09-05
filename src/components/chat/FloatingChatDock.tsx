@@ -24,6 +24,7 @@ import {
 } from '@/services/chatService'
 import { supabase } from '@/services/supabase'
 import { getAvatarUrl } from '@/utils/avatarUtils'
+import { formatChatDisplayName } from '@/utils/userUtils'
 
 export const FloatingChatDock: React.FC = () => {
   const { user, isAdmin } = useAuth()
@@ -358,7 +359,7 @@ export const FloatingChatDock: React.FC = () => {
             ) : (
               messages.map((msg) => {
                 const isMe = msg.sender_id === user?.id
-                const senderName = msg.profiles?.name || 'เพื่อนร่วมงาน'
+                const senderName = formatChatDisplayName(msg.profiles?.name, msg.profiles?.role)
                 const avatar = getAvatarUrl(msg.profiles?.avatar_url, senderName)
                 const timeStr = new Date(msg.created_at).toLocaleTimeString('th-TH', {
                   hour: '2-digit',

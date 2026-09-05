@@ -75,7 +75,7 @@ export const UserManagementPage: React.FC = () => {
   const [newNickname, setNewNickname] = useState('')
   const [newRole, setNewRole] = useState<UserRole>('teacher')
   const [newGroupId, setNewGroupId] = useState<string>('')
-  const [newPassword, setNewPassword] = useState('School@2026')
+  const [newPassword, setNewPassword] = useState('123456')
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -179,7 +179,7 @@ export const UserManagementPage: React.FC = () => {
     setNewNickname('')
     setNewRole('teacher')
     setNewGroupId('')
-    setNewPassword('School@2026')
+    setNewPassword('123456')
     setFormError(null)
     setIsCreateModalOpen(true)
   }
@@ -904,6 +904,9 @@ export const UserManagementPage: React.FC = () => {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                <p className="mt-1.5 text-[11px] text-slate-500">
+                  รหัสผ่านเริ่มต้นแนะนำคือ <span className="font-bold text-blue-600">123456</span> เพื่อให้คุณครูนำไปเข้าสู่ระบบและเปลี่ยนรหัสผ่านใหม่ได้เองในภายหลัง
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">

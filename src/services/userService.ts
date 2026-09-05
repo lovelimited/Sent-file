@@ -187,6 +187,7 @@ export async function createUser(payload: CreateUserPayload): Promise<{ success:
       p_role: payload.role,
       p_group_id: payload.group_id || null,
       p_password: payload.password,
+      p_nickname: payload.nickname?.trim() || null,
     })
 
     if (rpcError) {
