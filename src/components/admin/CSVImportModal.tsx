@@ -128,21 +128,22 @@ export const CSVImportModal: React.FC<CSVImportModalProps> = ({ groups, onClose,
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150 max-h-[85vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Upload className="h-5 w-5 text-emerald-600" />
-              <span>นำเข้าบัญชีครูจากไฟล์ CSV</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">เพิ่มบัญชีครูหลายคนพร้อมกันจากไฟล์สเปรดชีต</p>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4">
+      <div className="flex min-h-full items-center justify-center p-1 sm:p-2">
+        <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-2xl animate-in zoom-in-95 duration-150 my-auto max-h-[92vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3 sm:pb-4 mb-3 sm:mb-4 shrink-0">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Upload className="h-5 w-5 text-emerald-600" />
+                <span>นำเข้าบัญชีครูจากไฟล์ CSV</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">เพิ่มบัญชีครูหลายคนพร้อมกันจากไฟล์สเปรดชีต</p>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+              <X className="h-5 w-5" />
+            </button>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 cursor-pointer">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
 
         <div className="flex-1 overflow-y-auto">
           {/* Step 1: Upload */}
@@ -286,6 +287,7 @@ export const CSVImportModal: React.FC<CSVImportModalProps> = ({ groups, onClose,
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   )

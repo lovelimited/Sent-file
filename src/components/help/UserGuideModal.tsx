@@ -23,30 +23,31 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
   }
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-150">
-      <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden my-8 animate-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-slate-50/80">
-          <div className="flex items-center gap-2.5 text-slate-900">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-              <BookOpen className="h-4 w-4" />
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4">
+      <div className="flex min-h-full items-center justify-center p-1 sm:p-2">
+        <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-150">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4 bg-slate-50/80 shrink-0">
+            <div className="flex items-center gap-2.5 text-slate-900">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-600 shrink-0">
+                <BookOpen className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-bold">คู่มือการใช้งานระบบ School Work Club</h2>
+                <p className="text-[10px] sm:text-[11px] text-slate-500">โรงเรียนสารสาสน์วิเทศราชพฤกษ์</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-bold">คู่มือการใช้งานระบบ School Work Club</h2>
-              <p className="text-[11px] text-slate-500">โรงเรียนสารสาสน์วิเทศราชพฤกษ์</p>
-            </div>
+
+            <button
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
-          <button
-            onClick={onClose}
-            className="rounded-xl border border-slate-200 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="flex border-b border-slate-200 bg-slate-50/50 px-6 pt-3 gap-2">
+          {/* Tab Switcher */}
+          <div className="flex border-b border-slate-200 bg-slate-50/50 px-4 sm:px-6 pt-2.5 gap-2 shrink-0">
           <button
             onClick={() => setActiveTab('teacher')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer border-b-2 ${
@@ -199,7 +200,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200 px-6 py-3.5 bg-slate-50 text-xs text-slate-500">
+        <div className="flex items-center justify-between border-t border-slate-200 px-4 py-2.5 sm:px-6 sm:py-3 bg-slate-50 text-xs text-slate-500 shrink-0">
           <span>School Work Hub Documentation</span>
           <button
             onClick={onClose}
@@ -208,6 +209,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
             เข้าใจแล้ว
           </button>
         </div>
+      </div>
       </div>
     </div>
   )

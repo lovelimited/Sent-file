@@ -78,10 +78,11 @@ export const TeacherRatingModal: React.FC<TeacherRatingModalProps> = ({
   const activeStars = hoverStars || stars
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4">
+      <div className="flex min-h-full items-center justify-center p-1 sm:p-2">
+        <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-2xl animate-in zoom-in-95 duration-150 my-auto max-h-[92vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3 sm:pb-4 mb-3 sm:mb-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-amber-100 p-2.5 text-amber-700">
               <Award className="h-6 w-6" />
@@ -225,7 +226,7 @@ export const TeacherRatingModal: React.FC<TeacherRatingModalProps> = ({
         </div>
 
         {/* Fixed Footer */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 mt-2">
+        <div className="flex items-center justify-end gap-3 pt-3 sm:pt-4 border-t border-slate-200 mt-2 shrink-0">
           <button
             type="button"
             onClick={onClose}
@@ -243,6 +244,7 @@ export const TeacherRatingModal: React.FC<TeacherRatingModalProps> = ({
             <span>บันทึกการให้ดาว</span>
           </button>
         </div>
+      </div>
       </div>
     </div>
   )
