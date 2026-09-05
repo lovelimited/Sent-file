@@ -61,6 +61,7 @@ export const UserManagementPage: React.FC = () => {
   // Edit Profile modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editName, setEditName] = useState('')
+  const [editNickname, setEditNickname] = useState('')
   const [editRole, setEditRole] = useState<UserRole>('teacher')
   const [editGroupId, setEditGroupId] = useState<string>('')
   const [editAvatarUrl, setEditAvatarUrl] = useState<string>('')
@@ -71,6 +72,7 @@ export const UserManagementPage: React.FC = () => {
   // Form states
   const [newUsername, setNewUsername] = useState('')
   const [newName, setNewName] = useState('')
+  const [newNickname, setNewNickname] = useState('')
   const [newRole, setNewRole] = useState<UserRole>('teacher')
   const [newGroupId, setNewGroupId] = useState<string>('')
   const [newPassword, setNewPassword] = useState('School@2026')
@@ -133,6 +135,7 @@ export const UserManagementPage: React.FC = () => {
   const handleOpenEditModal = (u: ProfileWithGroup) => {
     setTargetUser(u)
     setEditName(u.name)
+    setEditNickname(u.nickname || '')
     setEditRole(u.role)
     setEditGroupId(u.group_id || '')
     setEditAvatarUrl(u.avatar_url || '')
@@ -154,6 +157,7 @@ export const UserManagementPage: React.FC = () => {
     setIsSubmitting(true)
     const res = await updateUserProfile(targetUser.id, {
       name: cleanName,
+      nickname: editNickname.trim() || null,
       role: editRole,
       group_id: editGroupId || null,
       avatar_url: editAvatarUrl.trim() || null,
@@ -172,6 +176,7 @@ export const UserManagementPage: React.FC = () => {
   const handleOpenCreateModal = () => {
     setNewUsername('')
     setNewName('')
+    setNewNickname('')
     setNewRole('teacher')
     setNewGroupId('')
     setNewPassword('School@2026')
@@ -185,6 +190,7 @@ export const UserManagementPage: React.FC = () => {
 
     const cleanUsername = newUsername.trim().toLowerCase()
     const cleanName = newName.trim()
+    const cleanNickname = newNickname.trim()
 
     if (!cleanUsername || cleanUsername.length < 3) {
       setFormError('ชื่อผู้ใช้ต้องมีความยาวอย่างน้อย 3 ตัวอักษร')
@@ -206,6 +212,7 @@ export const UserManagementPage: React.FC = () => {
     const res = await createUser({
       username: cleanUsername,
       name: cleanName,
+      nickname: cleanNickname || null,
       role: newRole,
       group_id: newGroupId || null,
       password: newPassword,
@@ -468,9 +475,16 @@ export const UserManagementPage: React.FC = () => {
                           className="h-8 w-8 rounded-full object-cover border border-slate-200 bg-white shrink-0"
                         />
                         <div>
-                          <span>{u.name}</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span>{u.name}</span>
+                            {u.nickname && (
+                              <span className="rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 text-[10px] font-semibold">
+                                {u.nickname}
+                              </span>
+                            )}
+                          </div>
                           {u.id === currentUser?.id && (
-                            <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.2 text-[10px] text-blue-800 font-semibold">
+                            <span className="mt-0.5 inline-block rounded-full bg-blue-100 px-2 py-0.2 text-[10px] text-blue-800 font-semibold">
                               คุณ
                             </span>
                           )}
@@ -675,18 +689,32 @@ export const UserManagementPage: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  ชื่อ-นามสกุล <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  placeholder="เช่น ครูสมชาย ใจดี"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-purple-600 focus:outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    ชื่อ-นามสกุล <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="เช่น ครูสมชาย ใจดี"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-purple-600 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    ชื่อเล่น (Nickname)
+                  </label>
+                  <input
+                    type="text"
+                    value={editNickname}
+                    onChange={(e) => setEditNickname(e.target.value)}
+                    placeholder="เช่น ครูแนน, ครูอาร์ม"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-purple-600 focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -793,18 +821,32 @@ export const UserManagementPage: React.FC = () => {
                 <p className="mt-1 text-[11px] text-slate-400">พิมพ์ตัวพิมพ์เล็กทั้งหมด ไม่มีช่องว่าง</p>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  ชื่อ-นามสกุล <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="เช่น ครูสมชาย ใจดี"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    ชื่อ-นามสกุล <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="เช่น ครูสมชาย ใจดี"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    ชื่อเล่น (Nickname)
+                  </label>
+                  <input
+                    type="text"
+                    value={newNickname}
+                    onChange={(e) => setNewNickname(e.target.value)}
+                    placeholder="เช่น ครูแนน, ครูอาร์ม"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

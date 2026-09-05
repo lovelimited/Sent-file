@@ -255,28 +255,30 @@ export const TeacherTasksPage: React.FC = () => {
         </div>
       )}
 
-      {/* Quick Google Drive Link Banner */}
-      <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-white p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-emerald-600 text-white p-2.5 shadow-sm">
-            <FolderOpen className="h-5 w-5" />
+      {/* Quick Google Drive Link Banner - Admin Only (ข้อ 4) */}
+      {isAdmin && (
+        <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-white p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-emerald-600 text-white p-2.5 shadow-sm">
+              <FolderOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">โฟลเดอร์ Google Drive รวมส่งงานของโรงเรียน</h3>
+              <p className="text-xs text-slate-500">สามารถเปิดโฟลเดอร์ Drive หรืออัปโหลดไฟล์ส่งผ่านระบบได้ทันที</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">โฟลเดอร์ Google Drive รวมส่งงานของโรงเรียน</h3>
-            <p className="text-xs text-slate-500">สามารถเปิดโฟลเดอร์ Drive หรืออัปโหลดไฟล์ส่งผ่านระบบได้ทันที</p>
-          </div>
-        </div>
 
-        <a
-          href="https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors shrink-0 self-start sm:self-auto"
-        >
-          <span>เปิดโฟลเดอร์ Drive</span>
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
-      </div>
+          <a
+            href="https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors shrink-0 self-start sm:self-auto"
+          >
+            <span>เปิดโฟลเดอร์ Drive</span>
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </div>
+      )}
 
       {/* Tabs & Search Controls */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
@@ -679,21 +681,23 @@ export const TeacherTasksPage: React.FC = () => {
               {/* Mode B: Google Drive Link */}
               {submissionType === 'drive' && (
                 <div className="space-y-2">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-slate-800">โฟลเดอร์ Google Drive ประจำงานนี้</p>
-                      <p className="text-[11px] text-slate-500">นำไฟล์ไปวางใน Drive แล้วนำลิงก์มาวางในช่องด้านล่าง</p>
+                  {selectedTask.tasks.drive_folder_url ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-slate-800">โฟลเดอร์ Google Drive ประจำภาระงานนี้</p>
+                        <p className="text-[11px] text-slate-500">สามารถเปิดโฟลเดอร์เพื่อวางไฟล์ หรือนำลิงก์ผลงานมาวางส่ง</p>
+                      </div>
+                      <a
+                        href={selectedTask.tasks.drive_folder_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                      >
+                        <span>เปิดโฟลเดอร์ Drive</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
                     </div>
-                    <a
-                      href={selectedTask.tasks.drive_folder_url || 'https://drive.google.com/drive/folders/1cPV7A4j49UAtOSEZQMKOMAllsm6LDv5i'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                    >
-                      <span>เปิดโฟลเดอร์ Drive</span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
+                  ) : null}
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">

@@ -347,8 +347,6 @@ export const DashboardPage: React.FC = () => {
             return (
               <div
                 key={item.id}
-                onMouseEnter={() => setHoveredTaskId(item.id)}
-                onMouseLeave={() => setHoveredTaskId(null)}
                 className="relative rounded-2xl border border-slate-200 bg-white p-5 flex flex-col justify-between hover:border-emerald-300 hover:shadow-md transition-all shadow-xs"
               >
                 <div>
@@ -378,12 +376,71 @@ export const DashboardPage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Circular Progress Ring with Hover Trigger (ข้อ 17) */}
+                    {/* Circular Progress Ring with Hover Trigger (ข้อ 6: โดนเฉพาะวงกลมเท่านั้น) */}
                     <div
                       className="shrink-0 relative cursor-pointer"
                       title="ชี้เมาส์เพื่อดูรายละเอียดงานย่อยที่ขาดและส่งแล้ว"
+                      onMouseEnter={() => setHoveredTaskId(item.id)}
+                      onMouseLeave={() => setHoveredTaskId(null)}
                     >
                       {renderCircularProgress(progress.percent, 58, 6)}
+
+                      {/* Tooltip Popover attached strictly to circular ring */}
+                      {isHovered && (
+                        <div className="absolute top-full right-0 mt-2 z-50 w-72 rounded-2xl border border-emerald-200 bg-white p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-xs pointer-events-none">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+                            <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                              <PieChart className="h-3.5 w-3.5 text-emerald-600" />
+                              <span>รายละเอียดความคืบหน้า</span>
+                            </span>
+                            <span className="font-bold text-emerald-700 text-xs">
+                              {progress.percent}%
+                            </span>
+                          </div>
+
+                          {/* Completed subtasks section */}
+                          <div className="space-y-1.5 mb-3">
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-800">
+                              <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                              <span>งานย่อยที่ส่งแล้ว ({progress.completed.length})</span>
+                            </div>
+                            {progress.completed.length === 0 ? (
+                              <p className="text-[10px] text-slate-400 pl-4">ยังไม่มีงานย่อยที่ส่ง</p>
+                            ) : (
+                              <ul className="space-y-1 pl-4 text-[11px] text-slate-700">
+                                {progress.completed.map((st, i) => (
+                                  <li key={st.id || i} className="flex items-center gap-1.5">
+                                    <span className="text-emerald-600 font-bold">✓</span>
+                                    <span className="line-clamp-1">{st.title}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+
+                          {/* Missing subtasks section */}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-amber-800">
+                              <AlertCircle className="h-3 w-3 text-amber-600" />
+                              <span>งานย่อยที่ยังขาด ({progress.missing.length})</span>
+                            </div>
+                            {progress.missing.length === 0 ? (
+                              <p className="text-[10px] text-emerald-600 font-medium pl-4">
+                                🎉 ส่งครบถ้วนทุกรายการแล้ว!
+                              </p>
+                            ) : (
+                              <ul className="space-y-1 pl-4 text-[11px] text-slate-600">
+                                {progress.missing.map((st, i) => (
+                                  <li key={st.id || i} className="flex items-center gap-1.5">
+                                    <span className="text-amber-500 font-bold">•</span>
+                                    <span className="line-clamp-1">{st.title}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -427,7 +484,7 @@ export const DashboardPage: React.FC = () => {
                 </div>
 
                 {/* Footer of Card with Link to Submit */}
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 relative z-10">
                   <span className="text-[11px] text-slate-400">
                     {item.submitted_at
                       ? `ส่งเมื่อ ${new Date(item.submitted_at).toLocaleDateString('th-TH')}`
@@ -435,71 +492,12 @@ export const DashboardPage: React.FC = () => {
                   </span>
                   <Link
                     to="/tasks"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition-colors border border-emerald-200 cursor-pointer"
                   >
                     <span>เปิดหน้าส่งงาน</span>
                     <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
-
-                {/* ============================================================ */}
-                {/* Interactive Hover Tooltip Popover (ข้อ 17: ชี้เมาส์แสดงงานที่ขาด และส่งแล้ว) */}
-                {/* ============================================================ */}
-                {isHovered && (
-                  <div className="absolute top-16 right-4 z-40 w-72 rounded-2xl border border-emerald-200 bg-white p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-xs">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
-                      <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                        <PieChart className="h-3.5 w-3.5 text-emerald-600" />
-                        <span>รายละเอียดความคืบหน้า</span>
-                      </span>
-                      <span className="font-bold text-emerald-700 text-xs">
-                        {progress.percent}%
-                      </span>
-                    </div>
-
-                    {/* Completed subtasks section */}
-                    <div className="space-y-1.5 mb-3">
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-800">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                        <span>งานย่อยที่ส่งแล้ว ({progress.completed.length})</span>
-                      </div>
-                      {progress.completed.length === 0 ? (
-                        <p className="text-[10px] text-slate-400 pl-4">ยังไม่มีงานย่อยที่ส่ง</p>
-                      ) : (
-                        <ul className="space-y-1 pl-4 text-[11px] text-slate-700">
-                          {progress.completed.map((st, i) => (
-                            <li key={st.id || i} className="flex items-center gap-1.5">
-                              <span className="text-emerald-600 font-bold">✓</span>
-                              <span className="line-clamp-1">{st.title}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    {/* Missing subtasks section */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-amber-800">
-                        <AlertCircle className="h-3 w-3 text-amber-600" />
-                        <span>งานย่อยที่ยังขาด ({progress.missing.length})</span>
-                      </div>
-                      {progress.missing.length === 0 ? (
-                        <p className="text-[10px] text-emerald-600 font-medium pl-4">
-                          🎉 ส่งครบถ้วนทุกรายการแล้ว!
-                        </p>
-                      ) : (
-                        <ul className="space-y-1 pl-4 text-[11px] text-slate-600">
-                          {progress.missing.map((st, i) => (
-                            <li key={st.id || i} className="flex items-center gap-1.5">
-                              <span className="text-amber-500 font-bold">•</span>
-                              <span className="line-clamp-1">{st.title}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             )
           })}

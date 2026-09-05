@@ -40,6 +40,7 @@ export interface Database {
           id: string
           username: string
           name: string
+          nickname: string | null
           role: UserRole
           group_id: string | null
           active: boolean
@@ -53,6 +54,7 @@ export interface Database {
           id: string
           username: string
           name: string
+          nickname?: string | null
           role?: UserRole
           group_id?: string | null
           active?: boolean
@@ -66,6 +68,7 @@ export interface Database {
           id?: string
           username?: string
           name?: string
+          nickname?: string | null
           role?: UserRole
           group_id?: string | null
           active?: boolean

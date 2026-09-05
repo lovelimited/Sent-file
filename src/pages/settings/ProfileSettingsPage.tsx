@@ -6,8 +6,6 @@ import {
   Key,
   Clock,
   Calendar,
-  AlertCircle,
-  CheckCircle2,
   Loader2,
   Lock,
   Eye,
@@ -21,12 +19,14 @@ import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/services/supabase'
 import { updateUserProfile } from '@/services/userService'
 import { PRESET_AVATARS, getAvatarUrl } from '@/utils/avatarUtils'
+import { showConfirm, showSuccess, showError, showToast } from '@/utils/sweetalert'
 
 export const ProfileSettingsPage: React.FC = () => {
   const { profile, role, user, refreshProfile } = useAuth()
 
   // Profile Edit State
   const [editName, setEditName] = useState('')
+  const [editNickname, setEditNickname] = useState('')
   const [editAvatarUrl, setEditAvatarUrl] = useState('')
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
@@ -39,12 +39,10 @@ export const ProfileSettingsPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
 
-  // Feedback Notification
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-
   useEffect(() => {
     if (profile) {
       setEditName(profile.name || '')
+      setEditNickname(profile.nickname || '')
       setEditAvatarUrl(profile.avatar_url || '')
     }
   }, [profile])
@@ -55,6 +53,7 @@ export const ProfileSettingsPage: React.FC = () => {
 
     if (file.size > 3 * 1024 * 1024) {
       setUploadError('ขนาดไฟล์ต้องไม่เกิน 3MB')
+      showError('ไฟล์มีขนาดใหญ่เกินไป', 'ขนาดไฟล์ต้องไม่เกิน 3MB')
       return
     }
 
@@ -78,10 +77,12 @@ export const ProfileSettingsPage: React.FC = () => {
         .getPublicUrl(filePath)
 
       setEditAvatarUrl(publicUrlData.publicUrl)
-      setFeedback({ type: 'success', message: 'อัปโหลดรูปภาพสำเร็จแล้ว (อย่าลืมกดบันทึกการแก้ไขโปรไฟล์)' })
+      showToast('อัปโหลดรูปภาพสำเร็จแล้ว อย่าลืมกดบันทึกการแก้ไขโปรไฟล์', 'success')
     } catch (err: unknown) {
       console.error('Avatar upload error:', err)
-      setUploadError(err instanceof Error ? err.message : 'ไม่สามารถอัปโหลดรูปภาพได้')
+      const msg = err instanceof Error ? err.message : 'ไม่สามารถอัปโหลดรูปภาพได้'
+      setUploadError(msg)
+      showError('อัปโหลดรูปภาพไม่สำเร็จ', msg)
     } finally {
       setIsUploadingAvatar(false)
     }
@@ -90,45 +91,46 @@ export const ProfileSettingsPage: React.FC = () => {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user?.id) return
-    setFeedback(null)
 
     const clean = editName.trim()
     if (!clean) {
-      setFeedback({ type: 'error', message: 'กรุณากรอกชื่อ-นามสกุล' })
+      showError('กรุณากรอกข้อมูล', 'กรุณากรอกชื่อ-นามสกุลของคุณ')
       return
     }
 
-    // Confirmation Dialog (ข้อ 5)
-    if (!window.confirm(`ยืนยันการบันทึกการเปลี่ยนแปลงข้อมูลโปรไฟล์ของคุณ?`)) {
-      return
-    }
+    // Confirmation Dialog with SweetAlert2
+    const confirmed = await showConfirm(
+      'ยืนยันการบันทึกข้อมูลโปรไฟล์?',
+      'คุณต้องการบันทึกการเปลี่ยนแปลงชื่อและรูปภาพโปรไฟล์ของคุณใช่หรือไม่?'
+    )
+    if (!confirmed) return
 
     setIsSavingProfile(true)
     const res = await updateUserProfile(user.id, {
       name: clean,
+      nickname: editNickname.trim() || null,
       avatar_url: editAvatarUrl.trim() || null,
     })
     setIsSavingProfile(false)
 
     if (res.success) {
-      setFeedback({ type: 'success', message: 'อัปเดตข้อมูลโปรไฟล์เรียบร้อยแล้ว' })
+      await showSuccess('บันทึกข้อมูลสำเร็จ', 'อัปเดตข้อมูลโปรไฟล์และรูปภาพเรียบร้อยแล้ว')
       if (refreshProfile) refreshProfile()
     } else {
-      setFeedback({ type: 'error', message: res.error || 'ไม่สามารถบันทึกข้อมูลได้' })
+      await showError('ไม่สามารถบันทึกข้อมูลได้', res.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล')
     }
   }
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
-    setFeedback(null)
 
     if (newPassword.length < 6) {
-      setFeedback({ type: 'error', message: 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร' })
+      showError('รหัสผ่านสั้นเกินไป', 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร')
       return
     }
 
     if (newPassword !== confirmPassword) {
-      setFeedback({ type: 'error', message: 'รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน' })
+      showError('รหัสผ่านไม่ตรงกัน', 'รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง')
       return
     }
 
@@ -139,9 +141,8 @@ export const ProfileSettingsPage: React.FC = () => {
       })
 
       if (error) {
-        setFeedback({ type: 'error', message: error.message || 'ไม่สามารถเปลี่ยนรหัสผ่านได้' })
+        await showError('ไม่สามารถเปลี่ยนรหัสผ่านได้', error.message || 'เกิดข้อผิดพลาดในการบันทึกรหัสผ่านใหม่')
       } else {
-        setFeedback({ type: 'success', message: 'เปลี่ยนรหัสผ่านของคุณเรียบร้อยแล้ว' })
         setNewPassword('')
         setConfirmPassword('')
 
@@ -162,67 +163,65 @@ export const ProfileSettingsPage: React.FC = () => {
             refreshProfile()
           }
         }
+
+        await showSuccess(
+          'เปลี่ยนรหัสผ่านสำเร็จ!',
+          'ระบบได้บันทึกรหัสผ่านใหม่ของคุณเรียบร้อยแล้ว กรุณาจำรหัสผ่านนี้สำหรับการเข้าสู่ระบบครั้งถัดไป'
+        )
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน'
-      setFeedback({ type: 'error', message })
+      await showError('เกิดข้อผิดพลาด', message)
     } finally {
       setIsUpdatingPassword(false)
     }
   }
+
+  // Live reactive preview avatar and display name for left card
+  const currentPreviewAvatar = editAvatarUrl || profile?.avatar_url
+  const currentDisplayName = editName || profile?.name
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
-          <User className="h-6 w-6 text-blue-600" />
+          <User className="h-6 w-6 text-emerald-600" />
           <span>ข้อมูลส่วนตัวและการตั้งค่าบัญชี</span>
         </h1>
         <p className="text-sm text-slate-600 mt-1">
-          ปรับแต่งรูปโปรไฟล์ ชื่อผู้ใช้ และเปลี่ยนรหัสผ่านส่วนตัวสำหรับเข้าสู่ระบบ
+          ปรับแต่งรูปโปรไฟล์ ชื่อ-นามสกุล ชื่อเล่น และเปลี่ยนรหัสผ่านส่วนตัวสำหรับเข้าสู่ระบบ
         </p>
       </div>
 
-      {/* Feedback Alert */}
-      {feedback && (
-        <div
-          className={`flex items-center gap-2.5 rounded-xl border p-4 text-sm ${
-            feedback.type === 'success'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-              : 'border-red-200 bg-red-50 text-red-800'
-          }`}
-        >
-          {feedback.type === 'success' ? (
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-          ) : (
-            <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
-          )}
-          <span>{feedback.message}</span>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left Column: Profile Card */}
+        {/* Left Column: Profile Card (Live Reactive Preview) */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
           <div className="flex flex-col items-center text-center">
             <div className="relative mb-3">
               <img
-                src={getAvatarUrl(profile?.avatar_url, profile?.name)}
-                alt={profile?.name || 'User'}
-                className="h-24 w-24 rounded-full object-cover border-3 border-purple-200 bg-white shadow-lg shadow-purple-500/15"
+                src={getAvatarUrl(currentPreviewAvatar, currentDisplayName)}
+                alt={currentDisplayName || 'User'}
+                className="h-24 w-24 rounded-full object-cover border-3 border-emerald-300 bg-white shadow-lg shadow-emerald-500/15 transition-all duration-200"
               />
-              <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-emerald-400 ring-2 ring-white" />
+              <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-emerald-500 ring-2 ring-white" />
             </div>
 
-            <h2 className="text-base font-bold text-slate-900">{profile?.name}</h2>
-            <p className="text-xs text-blue-600 font-mono mt-0.5">@{profile?.username}</p>
+            <h2 className="text-base font-bold text-slate-900">
+              {profile?.name}
+              {profile?.nickname ? (
+                <span className="block text-xs font-semibold text-emerald-700 mt-0.5">
+                  ({profile.nickname})
+                </span>
+              ) : null}
+            </h2>
+            <p className="text-xs text-emerald-700 font-mono mt-0.5">@{profile?.username}</p>
 
             <span
               className={`mt-2.5 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold ${
                 role === 'admin'
                   ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                  : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
               }`}
             >
               <Shield className="h-3 w-3" />
@@ -247,7 +246,15 @@ export const ProfileSettingsPage: React.FC = () => {
                 <span>เข้าสู่ระบบล่าสุด:</span>
               </span>
               <span className="font-medium text-slate-800">
-                {profile?.last_seen ? new Date(profile.last_seen).toLocaleDateString('th-TH') : '-'}
+                {profile?.last_seen
+                  ? new Date(profile.last_seen).toLocaleString('th-TH', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }) + ' น.'
+                  : 'กำลังใช้งานในปัจจุบัน'}
               </span>
             </div>
 
@@ -257,7 +264,13 @@ export const ProfileSettingsPage: React.FC = () => {
                 <span>วันที่สร้างบัญชี:</span>
               </span>
               <span className="font-medium text-slate-800">
-                {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('th-TH') : '-'}
+                {profile?.created_at
+                  ? new Date(profile.created_at).toLocaleDateString('th-TH', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : '-'}
               </span>
             </div>
           </div>
@@ -265,40 +278,60 @@ export const ProfileSettingsPage: React.FC = () => {
 
         {/* Right Column: Profile Edit & Password Change */}
         <div className="md:col-span-2 space-y-6">
-          {/* Card 1: Edit Profile Name & Avatar */}
+          {/* Card 1: Edit Profile Name, Nickname & Avatar */}
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Camera className="h-4 w-4 text-purple-600" />
+                  <Camera className="h-4 w-4 text-emerald-600" />
                   <span>แก้ไขข้อมูลโปรไฟล์และเลือกรูปอวตาร</span>
                 </h2>
                 <p className="text-xs text-slate-600 mt-1">
-                  แก้ไขชื่อ-นามสกุลที่แสดงผลในระบบ และเลือกรูปโปรไฟล์ของคุณ
+                  แก้ไขชื่อ-นามสกุล ชื่อเล่นที่แสดงผลในระบบ และเลือกรูปโปรไฟล์ของคุณ
                 </p>
               </div>
             </div>
 
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  ชื่อ-นามสกุล (สำหรับแสดงในระบบ) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  placeholder="เช่น คุณครูสมศรี รักการสอน"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-purple-500 focus:outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    ชื่อ-นามสกุล (สำหรับแสดงในระบบ) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="เช่น คุณครูสมศรี รักการสอน"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    ชื่อเล่น (Nickname)
+                  </label>
+                  <input
+                    type="text"
+                    value={editNickname}
+                    onChange={(e) => setEditNickname(e.target.value)}
+                    placeholder="เช่น ครูแนน, ครูอาร์ม"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
               </div>
 
               {/* Avatar Selector */}
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-2">
-                  เลือกรูปโปรไฟล์ / อวตารที่คุณชอบ
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-medium text-slate-700">
+                    เลือกรูปตัวละคร / อวตารที่คุณชอบ (คลิกเปลี่ยนได้ทันที)
+                  </label>
+                  <span className="text-[11px] text-emerald-700 font-semibold">
+                    แสดงตัวอย่างทันทีในรูปโปรไฟล์ด้านซ้าย
+                  </span>
+                </div>
                 <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3">
                   {PRESET_AVATARS.map((av) => {
                     const isSelected = editAvatarUrl === av.url
@@ -306,12 +339,15 @@ export const ProfileSettingsPage: React.FC = () => {
                       <button
                         key={av.id}
                         type="button"
-                        onClick={() => setEditAvatarUrl(av.url)}
+                        onClick={() => {
+                          setEditAvatarUrl(av.url)
+                          showToast(`เลือก ${av.name} แล้ว (อย่าลืมกดบันทึก)`, 'success')
+                        }}
                         title={av.name}
-                        className={`relative rounded-xl p-1 border-2 transition-all cursor-pointer ${
+                        className={`relative rounded-xl p-1 border-2 transition-all cursor-pointer transform hover:scale-105 active:scale-95 ${
                           isSelected
-                            ? 'border-purple-600 bg-purple-50 ring-2 ring-purple-200'
-                            : 'border-slate-200 hover:border-purple-300 bg-white'
+                            ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-200 scale-105'
+                            : 'border-slate-200 hover:border-emerald-300 bg-white'
                         }`}
                       >
                         <img
@@ -320,7 +356,7 @@ export const ProfileSettingsPage: React.FC = () => {
                           className="h-10 w-10 mx-auto rounded-full object-cover"
                         />
                         {isSelected && (
-                          <div className="absolute top-0 right-0 bg-purple-600 text-white rounded-full p-0.5 shadow-xs">
+                          <div className="absolute top-0 right-0 bg-emerald-600 text-white rounded-full p-0.5 shadow-xs">
                             <Check className="h-2.5 w-2.5" />
                           </div>
                         )}
@@ -329,7 +365,7 @@ export const ProfileSettingsPage: React.FC = () => {
                   })}
                 </div>
 
-                {/* อัปโหลดรูปโปรไฟล์จากเครื่อง (ข้อ 4) */}
+                {/* Upload Custom Avatar */}
                 <div className="mb-3 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 p-3">
                   <input
                     type="file"
@@ -379,7 +415,7 @@ export const ProfileSettingsPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSavingProfile}
-                  className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm hover:bg-purple-700 disabled:opacity-50 transition-all cursor-pointer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {isSavingProfile ? (
                     <>
@@ -398,7 +434,7 @@ export const ProfileSettingsPage: React.FC = () => {
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
             <div className="border-b border-slate-100 pb-4">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Key className="h-4 w-4 text-blue-600" />
+                <Key className="h-4 w-4 text-emerald-600" />
                 <span>เปลี่ยนรหัสผ่านด้วยตนเอง</span>
               </h2>
               <p className="text-xs text-slate-600 mt-1">
@@ -421,7 +457,7 @@ export const ProfileSettingsPage: React.FC = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="กรอกรหัสผ่านใหม่..."
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-emerald-500 focus:outline-none"
                   />
                   <button
                     type="button"
@@ -447,7 +483,7 @@ export const ProfileSettingsPage: React.FC = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="กรอกยืนยันรหัสผ่านใหม่อีกครั้ง..."
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -456,7 +492,7 @@ export const ProfileSettingsPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isUpdatingPassword}
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 transition-all cursor-pointer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-emerald-600/20 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {isUpdatingPassword ? (
                     <>

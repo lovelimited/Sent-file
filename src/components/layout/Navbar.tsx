@@ -257,8 +257,8 @@ export const Navbar: React.FC = () => {
                 />
                 <div className="flex flex-col text-left">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-slate-800 truncate max-w-[80px] sm:max-w-[120px]">
-                      {profile.name}
+                    <span className="text-xs font-semibold text-slate-800 truncate max-w-[90px] sm:max-w-[140px]">
+                      {profile.nickname ? `${profile.name} (${profile.nickname})` : profile.name}
                     </span>
                     <span
                       className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[10px] font-medium ${

@@ -5,6 +5,7 @@ import type { UserGroup, ActivityLog, UserRole, Database } from '@/types/index'
 export interface CreateUserPayload {
   username: string
   name: string
+  nickname?: string | null
   role: UserRole
   group_id?: string | null
   password: string
@@ -166,6 +167,12 @@ export async function createUser(payload: CreateUserPayload): Promise<{ success:
     })
 
     if (!error && !data?.error) {
+      if (payload.nickname) {
+        await supabase
+          .from('profiles')
+          .update({ nickname: payload.nickname.trim() })
+          .eq('username', payload.username.trim().toLowerCase())
+      }
       return { success: true }
     }
 
@@ -188,6 +195,13 @@ export async function createUser(payload: CreateUserPayload): Promise<{ success:
 
     if (rpcData && typeof rpcData === 'object' && 'error' in rpcData) {
       return { success: false, error: (rpcData as { error: string }).error }
+    }
+
+    if (payload.nickname) {
+      await supabase
+        .from('profiles')
+        .update({ nickname: payload.nickname.trim() })
+        .eq('username', payload.username.trim().toLowerCase())
     }
 
     return { success: true }
@@ -349,6 +363,7 @@ export async function fetchActivityLogs(): Promise<{ data: ActivityLogWithProfil
 export interface UpdateProfilePayload {
   name?: string
   username?: string
+  nickname?: string | null
   role?: UserRole
   group_id?: string | null
   avatar_url?: string | null
@@ -367,6 +382,7 @@ export async function updateUserProfile(
     }
     if (payload.name !== undefined) updateData.name = payload.name.trim()
     if (payload.username !== undefined) updateData.username = payload.username.trim()
+    if (payload.nickname !== undefined) updateData.nickname = payload.nickname ? payload.nickname.trim() : null
     if (payload.role !== undefined) updateData.role = payload.role
     if (payload.group_id !== undefined) updateData.group_id = payload.group_id || null
     if (payload.avatar_url !== undefined) updateData.avatar_url = payload.avatar_url

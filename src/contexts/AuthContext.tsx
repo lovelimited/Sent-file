@@ -48,6 +48,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(null)
         setSession(null)
       } else {
+        const nowIso = new Date().toISOString()
+        // Update last_seen timestamp asynchronously
+        supabase.from('profiles').update({ last_seen: nowIso }).eq('id', currentSession.user.id).then(() => {})
+        if (userProfile && !userProfile.last_seen) {
+          userProfile.last_seen = nowIso
+        }
         setProfile(userProfile)
       }
     } else {
@@ -146,11 +152,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (directAuth.session) {
+        const nowIso = new Date().toISOString()
+        supabase.from('profiles').update({ last_seen: nowIso }).eq('id', directAuth.session.user.id).then(() => {})
+
         const userProfile = await fetchProfile(directAuth.session.user.id)
         if (userProfile && !userProfile.active) {
           await supabase.auth.signOut()
           setIsLoading(false)
           return { success: false, error: 'บัญชีผู้ใช้งานนี้ถูกระงับการใช้งาน' }
+        }
+        if (userProfile) {
+          userProfile.last_seen = nowIso
         }
         setProfile(userProfile)
         setSession(directAuth.session)
