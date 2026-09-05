@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { FolderOpen, ExternalLink, Lock, AlertTriangle, Loader2, X, Save } from 'lucide-react'
 import { getMasterDriveUrl, updateMasterDriveUrl } from '@/services/driveService'
 import { showSuccess, showError } from '@/utils/sweetalert'
@@ -49,8 +50,8 @@ export const MasterDriveSettingsModal: React.FC<MasterDriveSettingsModalProps> =
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4">
+  const modalContent = (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in duration-150">
       <div className="flex min-h-full items-center justify-center p-1 sm:p-2">
         <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150 flex flex-col overflow-hidden my-auto max-h-[94vh]">
           {/* Header */}
@@ -163,4 +164,6 @@ export const MasterDriveSettingsModal: React.FC<MasterDriveSettingsModalProps> =
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }
