@@ -377,10 +377,12 @@ export interface Database {
           id: string
           title: string
           description: string | null
-          category: DriveResourceCategory
+          category: string
           url: string
           group_id: string | null
           created_by: string | null
+          file_size: number | null
+          file_type: string | null
           created_at: string
           updated_at: string
         }
@@ -388,10 +390,12 @@ export interface Database {
           id?: string
           title: string
           description?: string | null
-          category?: DriveResourceCategory
+          category?: string
           url: string
           group_id?: string | null
           created_by?: string | null
+          file_size?: number | null
+          file_type?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -399,10 +403,12 @@ export interface Database {
           id?: string
           title?: string
           description?: string | null
-          category?: DriveResourceCategory
+          category?: string
           url?: string
           group_id?: string | null
           created_by?: string | null
+          file_size?: number | null
+          file_type?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -457,18 +463,21 @@ export interface Database {
           id: string
           announcement_id: string
           user_id: string
+          reaction_type: string | null
           created_at: string
         }
         Insert: {
           id?: string
           announcement_id: string
           user_id: string
+          reaction_type?: string | null
           created_at?: string
         }
         Update: {
           id?: string
           announcement_id?: string
           user_id?: string
+          reaction_type?: string | null
           created_at?: string
         }
         Relationships: [
@@ -518,6 +527,49 @@ export interface Database {
           {
             foreignKeyName: 'announcement_comments_author_id_fkey'
             columns: ['author_id']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      teacher_ratings: {
+        Row: {
+          id: string
+          teacher_id: string
+          admin_id: string
+          stars: number
+          comment: string | null
+          category: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          teacher_id: string
+          admin_id: string
+          stars: number
+          comment?: string | null
+          category?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          teacher_id?: string
+          admin_id?: string
+          stars?: number
+          comment?: string | null
+          category?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'teacher_ratings_teacher_id_fkey'
+            columns: ['teacher_id']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'teacher_ratings_admin_id_fkey'
+            columns: ['admin_id']
             referencedRelation: 'profiles'
             referencedColumns: ['id']
           },

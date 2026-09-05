@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { DriveResource, DriveResourceCategory } from '@/types/index'
+import type { DriveResource } from '@/types/index'
 
 export interface DriveResourceWithGroup extends DriveResource {
   user_groups?: { name: string } | null
@@ -8,10 +8,12 @@ export interface DriveResourceWithGroup extends DriveResource {
 export interface CreateDriveResourcePayload {
   title: string
   description?: string
-  category: DriveResourceCategory
+  category: string
   url: string
   group_id?: string | null
   created_by?: string | null
+  file_size?: number | null
+  file_type?: string | null
 }
 
 /**
@@ -51,7 +53,7 @@ export async function fetchDriveResources(
 }
 
 /**
- * Admin creates a new drive resource or template link
+ * Create a new drive resource or uploaded file
  */
 export async function createDriveResource(
   payload: CreateDriveResourcePayload
@@ -64,7 +66,7 @@ export async function createDriveResource(
       return { success: false, error: 'กรุณาระบุชื่อทรัพยากร' }
     }
     if (!cleanUrl) {
-      return { success: false, error: 'กรุณาระบุลิงก์ Google Drive / ไฟล์' }
+      return { success: false, error: 'กรุณาระบุลิงก์หรืออัปโหลดไฟล์' }
     }
 
     const { data, error } = await supabase
@@ -72,10 +74,12 @@ export async function createDriveResource(
       .insert({
         title: cleanTitle,
         description: payload.description?.trim() || null,
-        category: payload.category,
+        category: payload.category.trim(),
         url: cleanUrl,
         group_id: payload.group_id || null,
         created_by: payload.created_by || null,
+        file_size: payload.file_size || null,
+        file_type: payload.file_type || null,
       })
       .select('id')
       .single()
@@ -102,11 +106,15 @@ export async function createDriveResource(
 }
 
 /**
- * Admin updates an existing drive resource
+ * Update an existing drive resource
  */
 export async function updateDriveResource(
   id: string,
-  payload: Partial<Pick<DriveResource, 'title' | 'description' | 'category' | 'url' | 'group_id'>>,
+  payload: Partial<Pick<DriveResource, 'title' | 'description' | 'url' | 'group_id'>> & {
+    category?: string
+    file_size?: number | null
+    file_type?: string | null
+  },
   adminId?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -137,7 +145,7 @@ export async function updateDriveResource(
 }
 
 /**
- * Admin deletes a drive resource
+ * Delete a drive resource
  */
 export async function deleteDriveResource(
   id: string,

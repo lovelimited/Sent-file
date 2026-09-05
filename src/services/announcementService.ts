@@ -16,6 +16,9 @@ export interface Announcement {
   likes_count?: number
   comments_count?: number
   user_has_liked?: boolean
+  user_reaction?: string | null
+  reaction_counts?: Record<string, number>
+  latest_comment?: AnnouncementComment | null
 }
 
 export interface AnnouncementComment {
@@ -33,8 +36,22 @@ export interface AnnouncementComment {
   } | null
 }
 
+export type ReactionType = 'like' | 'love' | 'haha' | 'wow' | 'sad' | 'angry'
+
+export const REACTION_CONFIG: Record<
+  ReactionType,
+  { label: string; emoji: string; color: string }
+> = {
+  like: { label: 'ถูกใจ', emoji: '👍', color: 'text-emerald-600' },
+  love: { label: 'รักเลย', emoji: '❤️', color: 'text-rose-600' },
+  haha: { label: 'ฮาฮา', emoji: '😆', color: 'text-amber-500' },
+  wow: { label: 'ว้าว', emoji: '😮', color: 'text-amber-500' },
+  sad: { label: 'เศร้า', emoji: '😢', color: 'text-blue-500' },
+  angry: { label: 'โกรธ', emoji: '😡', color: 'text-red-600' },
+}
+
 /**
- * Fetch all announcements with author info, likes count, comments count
+ * Fetch all announcements with author info, likes count, comments count, latest comment preview
  */
 export async function fetchAnnouncements(
   userId?: string,
@@ -51,35 +68,53 @@ export async function fetchAnnouncements(
       return { data: null, error: error.message }
     }
 
-    // Enrich with likes and comments counts
+    // Enrich with likes, reactions, comments counts, and 1 preview comment
     const enriched = await Promise.all(
       ((data as unknown) as Announcement[]).map(async (ann) => {
-        const { count: likesCount } = await supabase
+        // Likes & Reactions
+        const { data: likesData } = await supabase
           .from('announcement_likes')
-          .select('id', { count: 'exact', head: true })
+          .select('id, user_id, reaction_type')
           .eq('announcement_id', ann.id)
 
+        const likesCount = likesData?.length || 0
+        const reactionCounts: Record<string, number> = {}
+        let userReaction: string | null = null
+
+        if (likesData) {
+          for (const l of likesData) {
+            const rType = l.reaction_type || 'like'
+            reactionCounts[rType] = (reactionCounts[rType] || 0) + 1
+            if (userId && l.user_id === userId) {
+              userReaction = rType
+            }
+          }
+        }
+
+        // Comments Count
         const { count: commentsCount } = await supabase
           .from('announcement_comments')
           .select('id', { count: 'exact', head: true })
           .eq('announcement_id', ann.id)
 
-        let userHasLiked = false
-        if (userId) {
-          const { data: likeData } = await supabase
-            .from('announcement_likes')
-            .select('id')
-            .eq('announcement_id', ann.id)
-            .eq('user_id', userId)
-            .maybeSingle()
-          userHasLiked = !!likeData
-        }
+        // 1 Latest Comment Preview
+        const { data: latestComments } = await supabase
+          .from('announcement_comments')
+          .select('*, profiles:author_id(id, name, username, avatar_url, role)')
+          .eq('announcement_id', ann.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+
+        const latestComment = latestComments && latestComments.length > 0 ? ((latestComments[0] as unknown) as AnnouncementComment) : null
 
         return {
           ...ann,
-          likes_count: likesCount || 0,
+          likes_count: likesCount,
+          reaction_counts: reactionCounts,
           comments_count: commentsCount || 0,
-          user_has_liked: userHasLiked,
+          user_has_liked: !!userReaction,
+          user_reaction: userReaction,
+          latest_comment: latestComment,
         }
       })
     )
@@ -148,47 +183,63 @@ export async function deleteAnnouncement(
 }
 
 /**
- * Toggle like on an announcement
+ * Toggle like / reaction on an announcement
  */
-export async function toggleAnnouncementLike(
+export async function toggleAnnouncementReaction(
   announcementId: string,
-  userId: string
-): Promise<{ success: boolean; liked: boolean; error?: string }> {
+  userId: string,
+  reactionType: ReactionType = 'like'
+): Promise<{ success: boolean; liked: boolean; reaction: string | null; error?: string }> {
   try {
-    // Check if already liked
     const { data: existing } = await supabase
       .from('announcement_likes')
-      .select('id')
+      .select('id, reaction_type')
       .eq('announcement_id', announcementId)
       .eq('user_id', userId)
       .maybeSingle()
 
     if (existing) {
-      // Unlike
-      const { error } = await supabase
-        .from('announcement_likes')
-        .delete()
-        .eq('id', existing.id)
+      // If same reaction clicked: remove reaction (unlike)
+      if (existing.reaction_type === reactionType) {
+        const { error } = await supabase
+          .from('announcement_likes')
+          .delete()
+          .eq('id', existing.id)
 
-      if (error) return { success: false, liked: true, error: error.message }
-      return { success: true, liked: false }
+        if (error) return { success: false, liked: true, reaction: existing.reaction_type, error: error.message }
+        return { success: true, liked: false, reaction: null }
+      } else {
+        // Different reaction clicked: change reaction
+        const { error } = await supabase
+          .from('announcement_likes')
+          .update({ reaction_type: reactionType })
+          .eq('id', existing.id)
+
+        if (error) return { success: false, liked: true, reaction: existing.reaction_type, error: error.message }
+        return { success: true, liked: true, reaction: reactionType }
+      }
     } else {
-      // Like
+      // New reaction
       const { error } = await supabase
         .from('announcement_likes')
         .insert({
           announcement_id: announcementId,
           user_id: userId,
+          reaction_type: reactionType,
         })
 
-      if (error) return { success: false, liked: false, error: error.message }
-      return { success: true, liked: true }
+      if (error) return { success: false, liked: false, reaction: null, error: error.message }
+      return { success: true, liked: true, reaction: reactionType }
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to toggle like'
-    return { success: false, liked: false, error: message }
+    const message = err instanceof Error ? err.message : 'Failed to toggle reaction'
+    return { success: false, liked: false, reaction: null, error: message }
   }
 }
+
+// Keep backward compatibility
+export const toggleAnnouncementLike = (annId: string, uId: string) =>
+  toggleAnnouncementReaction(annId, uId, 'like')
 
 /**
  * Fetch comments for an announcement

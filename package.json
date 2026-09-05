@@ -17,6 +17,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.3",
+    "sweetalert2": "^11.26.25",
     "tailwindcss": "^4.3.3",
     "vite-plugin-pwa": "^1.3.0"
   },

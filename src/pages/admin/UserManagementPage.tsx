@@ -19,6 +19,7 @@ import {
   EyeOff,
   Filter,
   FileUp,
+  Star,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import type { ProfileWithGroup } from '@/types/auth.types'
@@ -34,12 +35,16 @@ import {
 } from '@/services/userService'
 import { PRESET_AVATARS, getAvatarUrl } from '@/utils/avatarUtils'
 import { CSVImportModal } from '@/components/admin/CSVImportModal'
+import { TeacherRatingModal } from '@/components/admin/TeacherRatingModal'
+import { fetchTeachersRatingMap, type TeacherRatingStats } from '@/services/ratingService'
+import { showConfirm, showToast, showError } from '@/utils/sweetalert'
 
 export const UserManagementPage: React.FC = () => {
   const { user: currentUser } = useAuth()
 
   const [users, setUsers] = useState<ProfileWithGroup[]>([])
   const [groups, setGroups] = useState<UserGroup[]>([])
+  const [ratingMap, setRatingMap] = useState<Record<string, TeacherRatingStats>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all')
@@ -51,13 +56,14 @@ export const UserManagementPage: React.FC = () => {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [targetUser, setTargetUser] = useState<ProfileWithGroup | null>(null)
+  const [ratingTargetUser, setRatingTargetUser] = useState<ProfileWithGroup | null>(null)
+
   // Edit Profile modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editName, setEditName] = useState('')
   const [editRole, setEditRole] = useState<UserRole>('teacher')
   const [editGroupId, setEditGroupId] = useState<string>('')
   const [editAvatarUrl, setEditAvatarUrl] = useState<string>('')
-
 
   // Feedback notification
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -78,26 +84,21 @@ export const UserManagementPage: React.FC = () => {
 
   const loadData = useCallback(() => {
     setIsLoading(true)
-    Promise.all([fetchUsers(), fetchGroups()]).then(([usersRes, groupsRes]) => {
-      if (usersRes.data) setUsers(usersRes.data)
+    Promise.all([fetchUsers(), fetchGroups()]).then(async ([usersRes, groupsRes]) => {
+      if (usersRes.data) {
+        setUsers(usersRes.data)
+        const ids = usersRes.data.map((u) => u.id)
+        const rMap = await fetchTeachersRatingMap(ids)
+        setRatingMap(rMap)
+      }
       if (groupsRes.data) setGroups(groupsRes.data)
       setIsLoading(false)
     })
   }, [])
 
   useEffect(() => {
-    let isMounted = true
-    Promise.all([fetchUsers(), fetchGroups()]).then(([usersRes, groupsRes]) => {
-      if (isMounted) {
-        if (usersRes.data) setUsers(usersRes.data)
-        if (groupsRes.data) setGroups(groupsRes.data)
-        setIsLoading(false)
-      }
-    })
-    return () => {
-      isMounted = false
-    }
-  }, [])
+    loadData()
+  }, [loadData])
 
   // Filter users
   const filteredUsers = useMemo(() => {
@@ -253,32 +254,34 @@ export const UserManagementPage: React.FC = () => {
 
   const handleToggleActive = async (u: ProfileWithGroup) => {
     if (u.id === currentUser?.id) {
-      setFeedback({ type: 'error', message: 'ไม่สามารถระงับบัญชีของตนเองได้' })
+      showError('ไม่สามารถทำรายการได้', 'ไม่สามารถระงับบัญชีของตนเองได้')
       return
     }
 
     const newActiveState = !u.active
-    const confirmMessage = newActiveState
-      ? `ต้องการเปิดใช้งานบัญชีของคุณครู ${u.name} หรือไม่?`
-      : `ต้องการระงับการใช้งานบัญชีของคุณครู ${u.name} หรือไม่? (ครูจะไม่สามารถเข้าสู่ระบบได้)`
-
-    if (!window.confirm(confirmMessage)) return
+    const confirmed = await showConfirm(
+      newActiveState ? 'เปิดใช้งานบัญชี?' : 'ระงับการใช้งานบัญชี?',
+      newActiveState
+        ? `ต้องการเปิดใช้งานบัญชีของคุณครู ${u.name} หรือไม่?`
+        : `ต้องการระงับบัญชีของคุณครู ${u.name} หรือไม่? (ครูจะไม่สามารถเข้าสู่ระบบได้)`,
+      newActiveState ? 'เปิดใช้งาน' : 'ระงับบัญชี',
+      'ยกเลิก',
+      !newActiveState
+    )
+    if (!confirmed) return
 
     const res = await toggleUserActive(u.id, newActiveState)
     if (res.success) {
-      setFeedback({
-        type: 'success',
-        message: newActiveState ? `เปิดใช้งานบัญชี ${u.name} แล้ว` : `ระงับบัญชี ${u.name} แล้ว`,
-      })
+      showToast(newActiveState ? `เปิดใช้งานบัญชี ${u.name} แล้ว` : `ระงับบัญชี ${u.name} แล้ว`, 'success')
       loadData()
     } else {
-      setFeedback({ type: 'error', message: res.error || 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะ' })
+      showError('เกิดข้อผิดพลาด', res.error || 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะ')
     }
   }
 
   const handleOpenDeleteModal = (u: ProfileWithGroup) => {
     if (u.id === currentUser?.id) {
-      setFeedback({ type: 'error', message: 'ไม่สามารถลบบัญชีของตนเองได้' })
+      showError('ไม่สามารถทำรายการได้', 'ไม่สามารถลบบัญชีของตนเองได้')
       return
     }
     setTargetUser(u)
@@ -294,7 +297,7 @@ export const UserManagementPage: React.FC = () => {
 
     if (res.success) {
       setIsDeleteModalOpen(false)
-      setFeedback({ type: 'success', message: `ลบบัญชี ${targetUser.name} เรียบร้อยแล้ว` })
+      showToast(`ลบบัญชี ${targetUser.name} เรียบร้อยแล้ว`, 'success')
       loadData()
     } else {
       setFormError(res.error || 'ไม่สามารถลบบัญชีได้')
@@ -449,6 +452,7 @@ export const UserManagementPage: React.FC = () => {
                   <th className="px-4 py-3.5">กลุ่มสาระการเรียนรู้</th>
                   <th className="px-4 py-3.5">บทบาท</th>
                   <th className="px-4 py-3.5">สถานะ</th>
+                  <th className="px-4 py-3.5">คะแนนดาว (⭐)</th>
                   <th className="px-4 py-3.5">เข้าใช้งานล่าสุด</th>
                   <th className="px-4 py-3.5 text-right">การจัดการ</th>
                 </tr>
@@ -508,11 +512,33 @@ export const UserManagementPage: React.FC = () => {
                         </span>
                       )}
                     </td>
+                    <td className="px-4 py-3 text-xs">
+                      {ratingMap[u.id] ? (
+                        <div className="flex items-center gap-1 font-bold text-amber-600">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+                          <span>{ratingMap[u.id].average}</span>
+                          <span className="text-[10px] text-slate-400 font-normal">
+                            ({ratingMap[u.id].count})
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px]">ยังไม่มี</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-xs text-slate-500">
                       {u.last_seen ? new Date(u.last_seen).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '-'}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {/* Rate Teacher with Stars (ข้อ 4) */}
+                        <button
+                          onClick={() => setRatingTargetUser(u)}
+                          title="ให้คะแนนดาวและชื่นชมคุณครู"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-600 hover:text-amber-700 hover:border-amber-300 hover:bg-amber-100 transition-colors cursor-pointer"
+                        >
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+                        </button>
+
                         {/* Edit Profile */}
                         <button
                           onClick={() => handleOpenEditModal(u)}
@@ -1013,6 +1039,16 @@ export const UserManagementPage: React.FC = () => {
             setFeedback({ type: 'success', message: 'นำเข้าข้อมูลคุณครูเรียบร้อยแล้ว' })
             loadData()
           }}
+        />
+      )}
+
+      {/* Teacher Rating Modal (ข้อ 4) */}
+      {ratingTargetUser && currentUser?.id && (
+        <TeacherRatingModal
+          teacher={ratingTargetUser}
+          adminId={currentUser.id}
+          onClose={() => setRatingTargetUser(null)}
+          onRated={loadData}
         />
       )}
     </div>
