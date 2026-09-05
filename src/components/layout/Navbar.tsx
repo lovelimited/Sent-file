@@ -94,36 +94,36 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-md shadow-xs">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6">
+      <div className="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-2.5 sm:px-4 lg:px-6">
         {/* Brand Logo with Sarasas Crest */}
         <Link
           to="/"
-          className="flex items-center gap-2.5 text-slate-900 font-semibold text-base sm:text-lg tracking-tight hover:opacity-90 transition-opacity shrink-0"
+          className="flex items-center gap-2 text-slate-900 font-semibold text-sm sm:text-base tracking-tight hover:opacity-90 transition-opacity shrink-0"
         >
           <img
             src="/school-logo.png"
             alt="ตราสัญลักษณ์โรงเรียนสารสาสน์วิเทศราชพฤกษ์"
-            className="h-10 w-10 object-contain rounded-full bg-white p-0.5 border border-amber-300 drop-shadow-xs shrink-0"
+            className="h-9 w-9 sm:h-10 sm:w-10 object-contain rounded-full bg-white p-0.5 border border-amber-300 drop-shadow-xs shrink-0"
           />
           <div className="flex flex-col">
-            <span className="leading-tight font-bold text-slate-900 text-sm sm:text-base">
+            <span className="leading-tight font-bold text-slate-900 text-sm sm:text-base whitespace-nowrap">
               School Work Club
             </span>
-            <span className="text-[10px] font-normal text-slate-500 hidden sm:inline">
+            <span className="text-[10px] font-normal text-slate-500 hidden xl:inline whitespace-nowrap">
               สารสาสน์วิเทศราชพฤกษ์
             </span>
           </div>
         </Link>
 
         {/* Navigation & User Menu */}
-        <nav className="flex items-center gap-1.5 sm:gap-2.5 text-sm">
+        <nav className="flex items-center gap-1 sm:gap-1.5 xl:gap-2 text-sm">
           {isAuthenticated && profile ? (
             <>
               {/* Desktop Navigation Links */}
-              <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 text-xs font-medium">
+              <div className="hidden lg:flex items-center gap-0.5 xl:gap-1 text-xs font-medium">
                 <Link
                   to="/"
-                  className={`rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                  className={`rounded-lg px-2 py-1 xl:px-2.5 xl:py-1.5 transition-colors whitespace-nowrap ${
                     location.pathname === '/'
                       ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -137,26 +137,26 @@ export const Navbar: React.FC = () => {
                   <>
                     <Link
                       to="/admin/overview"
-                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                      className={`flex items-center gap-1 xl:gap-1.5 rounded-lg px-2 py-1 xl:px-2.5 xl:py-1.5 transition-colors whitespace-nowrap ${
                         location.pathname === '/admin/overview' || location.pathname === '/dashboard'
                           ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      <PieChart className="h-3.5 w-3.5 text-emerald-600" />
-                      <span>แดชบอร์ดภาพรวม</span>
+                      <PieChart className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>แดชบอร์ด</span>
                     </Link>
 
                     <Link
                       to="/admin/tasks"
-                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                      className={`flex items-center gap-1 xl:gap-1.5 rounded-lg px-2 py-1 xl:px-2.5 xl:py-1.5 transition-colors whitespace-nowrap ${
                         location.pathname === '/admin/tasks'
                           ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      <ClipboardList className="h-3.5 w-3.5 text-emerald-600" />
-                      <span>จัดการภาระงาน</span>
+                      <ClipboardList className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>ภาระงาน</span>
                     </Link>
                   </>
                 ) : (
@@ -164,26 +164,26 @@ export const Navbar: React.FC = () => {
                     {/* Teacher Links */}
                     <Link
                       to="/dashboard"
-                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                      className={`flex items-center gap-1 xl:gap-1.5 rounded-lg px-2 py-1 xl:px-2.5 xl:py-1.5 transition-colors whitespace-nowrap ${
                         location.pathname === '/dashboard'
                           ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      <PieChart className="h-3.5 w-3.5 text-emerald-600" />
-                      <span>แดชบอร์ดภาระงาน</span>
+                      <PieChart className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>แดชบอร์ด</span>
                     </Link>
 
                     <Link
                       to="/tasks"
-                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                      className={`flex items-center gap-1 xl:gap-1.5 rounded-lg px-2 py-1 xl:px-2.5 xl:py-1.5 transition-colors whitespace-nowrap ${
                         location.pathname === '/tasks'
                           ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      <CheckSquare className="h-3.5 w-3.5" />
-                      <span>ภาระงานของฉัน</span>
+                      <CheckSquare className="h-3.5 w-3.5 shrink-0" />
+                      <span>ภาระงาน</span>
                     </Link>
                   </>
                 )}
@@ -191,26 +191,26 @@ export const Navbar: React.FC = () => {
                 {/* Chat link */}
                 <Link
                   to="/chat"
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                  className={`flex items-center gap-1 xl:gap-1.5 rounded-lg px-2 py-1 xl:px-2.5 xl:py-1.5 transition-colors whitespace-nowrap ${
                     location.pathname === '/chat'
                       ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  <span>ห้องสื่อสาร</span>
+                  <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                  <span>สื่อสาร</span>
                 </Link>
 
                 {/* Drive Resources link */}
                 <Link
                   to="/drive"
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                  className={`flex items-center gap-1 xl:gap-1.5 rounded-lg px-2 py-1 xl:px-2.5 xl:py-1.5 transition-colors whitespace-nowrap ${
                     location.pathname === '/drive'
                       ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  <FolderOpen className="h-3.5 w-3.5" />
+                  <FolderOpen className="h-3.5 w-3.5 shrink-0" />
                   <span>คลัง Drive</span>
                 </Link>
 
@@ -220,14 +220,14 @@ export const Navbar: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setIsAdminDropdownOpen(!isAdminDropdownOpen)}
-                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors cursor-pointer whitespace-nowrap ${
+                      className={`flex items-center gap-1 xl:gap-1.5 rounded-lg px-2 py-1 xl:px-2.5 xl:py-1.5 transition-colors cursor-pointer whitespace-nowrap ${
                         isAdminSubpageActive
                           ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      <Shield className="h-3.5 w-3.5 text-emerald-600" />
-                      <span>การจัดการระบบ</span>
+                      <Shield className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>จัดการระบบ</span>
                       <ChevronDown className={`h-3 w-3 transition-transform ${isAdminDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
 
@@ -242,7 +242,7 @@ export const Navbar: React.FC = () => {
                               : 'text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          <Users className="h-4 w-4 text-emerald-600" />
+                          <Users className="h-4 w-4 text-emerald-600 shrink-0" />
                           <div>
                             <p className="font-medium leading-tight">จัดการบุคลากรครู</p>
                             <p className="text-[10px] text-slate-400">แก้ไขข้อมูลและสถานะครู</p>
@@ -258,7 +258,7 @@ export const Navbar: React.FC = () => {
                               : 'text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          <FolderTree className="h-4 w-4 text-emerald-600" />
+                          <FolderTree className="h-4 w-4 text-emerald-600 shrink-0" />
                           <div>
                             <p className="font-medium leading-tight">กลุ่มสาระการเรียนรู้</p>
                             <p className="text-[10px] text-slate-400">โครงสร้างกลุ่มและฝ่ายงาน</p>
@@ -274,7 +274,7 @@ export const Navbar: React.FC = () => {
                               : 'text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          <FileText className="h-4 w-4 text-emerald-600" />
+                          <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
                           <div>
                             <p className="font-medium leading-tight">ประวัติกิจกรรมระบบ</p>
                             <p className="text-[10px] text-slate-400">ตรวจสอบ Audit Trail</p>
@@ -292,7 +292,7 @@ export const Navbar: React.FC = () => {
                             <div className="min-w-0 flex-1">
                               <p className="font-medium leading-tight flex items-center gap-1">
                                 <span>Master Google Drive</span>
-                                <Lock className="h-2.5 w-2.5 text-amber-600" />
+                                <Lock className="h-2.5 w-2.5 text-amber-600 shrink-0" />
                               </p>
                               <p className="text-[10px] text-slate-400">โฟลเดอร์รวมโรงเรียน (ยืนยันรหัส)</p>
                             </div>
@@ -308,30 +308,30 @@ export const Navbar: React.FC = () => {
               <NotificationBell />
 
               {/* User details badge - compact to prevent overflow */}
-              <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1.5 pr-2 sm:pr-2.5 shrink-0">
+              <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 py-0.5 pl-1 pr-1.5 sm:pr-2.5 shrink-0">
                 <img
                   src={getAvatarUrl(profile.avatar_url, profile.name)}
                   alt={profile.name}
-                  className="h-7 w-7 rounded-full object-cover border border-slate-200 bg-white shrink-0"
+                  className="h-6 w-6 sm:h-7 sm:w-7 rounded-full object-cover border border-slate-200 bg-white shrink-0"
                 />
                 <div className="flex flex-col text-left min-w-0">
                   <div className="flex items-center gap-1">
-                    <span className="text-xs font-semibold text-slate-800 truncate max-w-[65px] sm:max-w-[90px] lg:max-w-[110px] xl:max-w-[140px]">
+                    <span className="text-xs font-semibold text-slate-800 truncate max-w-[55px] sm:max-w-[75px] xl:max-w-[100px] 2xl:max-w-[130px]">
                       {profile.nickname ? `${profile.name} (${profile.nickname})` : profile.name}
                     </span>
                     <span
-                      className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[9px] font-medium shrink-0 ${
+                      className={`inline-flex items-center gap-0.5 rounded px-1 py-0.2 text-[9px] font-medium shrink-0 ${
                         profile.role === 'admin'
                           ? 'bg-purple-100 text-purple-700 border border-purple-200'
                           : 'bg-blue-100 text-blue-700 border border-blue-200'
                       }`}
                     >
-                      {profile.role === 'admin' && <Shield className="h-2.5 w-2.5" />}
+                      {profile.role === 'admin' && <Shield className="h-2 w-2 shrink-0" />}
                       {profile.role === 'admin' ? 'แอดมิน' : 'ครู'}
                     </span>
                   </div>
                   {profile.user_groups?.name && (
-                    <span className="text-[9px] text-slate-500 leading-none truncate max-w-[80px] lg:max-w-[100px] hidden sm:inline">
+                    <span className="text-[9px] text-slate-500 leading-none truncate max-w-[80px] hidden 2xl:inline">
                       {profile.user_groups.name}
                     </span>
                   )}
@@ -343,13 +343,13 @@ export const Navbar: React.FC = () => {
                 to="/settings"
                 title="ข้อมูลส่วนตัวและการตั้งค่าความปลอดภัย"
                 aria-label="ข้อมูลส่วนตัวและการตั้งค่าความปลอดภัย"
-                className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
+                className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border transition-colors shrink-0 ${
                   location.pathname === '/settings'
                     ? 'border-blue-500 bg-blue-50 text-blue-600'
                     : 'border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:bg-slate-100'
                 }`}
               >
-                <Settings className="h-4 w-4" />
+                <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Link>
 
               {/* Help & User Guide Button */}
@@ -358,9 +358,9 @@ export const Navbar: React.FC = () => {
                 onClick={() => setIsGuideOpen(true)}
                 title="คู่มือการใช้งานระบบ"
                 aria-label="คู่มือการใช้งานระบบ"
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-pointer"
+                className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-pointer shrink-0"
               >
-                <HelpCircle className="h-4 w-4" />
+                <HelpCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
 
               {/* Logout Button */}
@@ -368,9 +368,9 @@ export const Navbar: React.FC = () => {
                 onClick={handleLogout}
                 title="ออกจากระบบ"
                 aria-label="ออกจากระบบ"
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-red-600 hover:border-red-300 hover:bg-red-50 transition-colors cursor-pointer"
+                className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-red-600 hover:border-red-300 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
             </>
           ) : (
