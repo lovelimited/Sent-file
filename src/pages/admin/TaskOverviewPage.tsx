@@ -296,7 +296,7 @@ export const TaskOverviewPage: React.FC = () => {
           </div>
         </div>
         <p className="text-[10px] text-slate-500">
-          พิมพ์เมื่อ: {new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} • ระบบ School Work Hub
+          พิมพ์เมื่อ: {new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} • ระบบ School Work Club
         </p>
       </div>
 
@@ -315,15 +315,15 @@ export const TaskOverviewPage: React.FC = () => {
           ยังไม่มีภาระงานในระบบ
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-          <div className="overflow-x-auto max-h-[70vh]">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden print:border-none print:shadow-none">
+          <div className="overflow-x-auto max-h-[70vh] print:max-h-none print:overflow-visible">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 text-slate-700 shadow-2xs">
+              <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 text-slate-700 shadow-2xs print:static print:bg-slate-100">
                 <tr>
-                  <th className="sticky left-0 z-30 bg-slate-50 p-3 font-semibold text-center w-12 border-r border-slate-200">
+                  <th className="sticky left-0 z-30 bg-slate-50 p-3 font-semibold text-center w-12 border-r border-slate-200 print:static print:bg-slate-100">
                     #
                   </th>
-                  <th className="sticky left-12 z-30 bg-slate-50 p-3 font-semibold min-w-[180px] border-r border-slate-200">
+                  <th className="sticky left-12 z-30 bg-slate-50 p-3 font-semibold min-w-[180px] border-r border-slate-200 print:static print:bg-slate-100">
                     ชื่อ-นามสกุล / กลุ่มสาระฯ
                   </th>
                   {tasks.map((task) => (
@@ -350,12 +350,12 @@ export const TaskOverviewPage: React.FC = () => {
                   return (
                     <tr key={teacher.id} className="hover:bg-slate-50/70 transition-colors">
                       {/* Row Index */}
-                      <td className="sticky left-0 z-10 bg-white p-3 text-center text-slate-400 font-mono text-[11px] border-r border-slate-200">
+                      <td className="sticky left-0 z-10 bg-white p-3 text-center text-slate-400 font-mono text-[11px] border-r border-slate-200 print:static">
                         {index + 1}
                       </td>
 
                       {/* Teacher Name & Group */}
-                      <td className="sticky left-12 z-10 bg-white p-3 font-medium text-slate-900 border-r border-slate-200">
+                      <td className="sticky left-12 z-10 bg-white p-3 font-medium text-slate-900 border-r border-slate-200 print:static">
                         <div className="font-semibold text-slate-900 leading-tight">{teacher.name}</div>
                         <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
                           {groupName} (@{teacher.username})

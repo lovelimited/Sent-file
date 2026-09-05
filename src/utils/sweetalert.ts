@@ -1,7 +1,7 @@
 import Swal from 'sweetalert2'
 
 /**
- * Custom SweetAlert2 instance styled with School Work Hub Pastel Mint/Emerald Theme
+ * Custom SweetAlert2 instance styled with School Work Club Pastel Mint/Emerald Theme
  */
 export const showConfirm = async (
   title: string,

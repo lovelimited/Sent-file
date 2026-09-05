@@ -32,7 +32,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
               <BookOpen className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold">คู่มือการใช้งานระบบ School Work Hub</h2>
+              <h2 className="text-base font-bold">คู่มือการใช้งานระบบ School Work Club</h2>
               <p className="text-[11px] text-slate-500">โรงเรียนสารสาสน์วิเทศราชพฤกษ์</p>
             </div>
           </div>

@@ -11,8 +11,11 @@ import {
   Clock,
   Sparkles,
   Bell,
+  ArrowLeft,
+  Search,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { usePresence } from '@/contexts/PresenceContext'
 import {
   fetchAccessibleChannels,
   fetchChannelMessages,
@@ -32,11 +35,15 @@ export const ChatPage: React.FC = () => {
   const [channels, setChannels] = useState<ChatChannelWithGroup[]>([])
   const [activeChannel, setActiveChannel] = useState<ChatChannelWithGroup | null>(null)
   const [messages, setMessages] = useState<ChatMessageWithSender[]>([])
+  const [newMessage, setNewMessage] = useState('')
   const [unreadMap, setUnreadMap] = useState<Record<string, number>>({})
   const [isLoadingChannels, setIsLoadingChannels] = useState(true)
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
-  const [newMessage, setNewMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [mobileTab, setMobileTab] = useState<'channels' | 'messages'>('messages')
+  const [channelSearch, setChannelSearch] = useState('')
+  const [channelFilter, setChannelFilter] = useState<'all' | 'general' | 'group' | 'announcement'>('all')
+  const { isUserOnline } = usePresence()
 
   const chatMessagesContainerRef = useRef<HTMLDivElement>(null)
 
@@ -81,10 +88,11 @@ export const ChatPage: React.FC = () => {
       if (isMounted && res.data && res.data.length > 0) {
         setChannels(res.data)
 
-        // Select target channel from query or first channel
+        // Requirement 2: Select target channel from query, or latest active from localStorage, or first
+        const savedChannelId = localStorage.getItem('last_active_chat_channel')
         const matched = targetChannelId
           ? res.data.find((c) => c.id === targetChannelId)
-          : null
+          : (savedChannelId ? res.data.find((c) => c.id === savedChannelId) : null)
         const initial = matched || res.data[0]
 
         setActiveChannel(initial)
@@ -209,13 +217,23 @@ export const ChatPage: React.FC = () => {
   const isAnnouncementChannel = activeChannel?.type === 'announcement'
   const canPostInActiveChannel = !isAnnouncementChannel || isAdmin
 
+  const filteredChannels = channels.filter((ch) => {
+    const matchSearch = !channelSearch.trim() || ch.name.toLowerCase().includes(channelSearch.toLowerCase())
+    const matchType = channelFilter === 'all' || ch.type === channelFilter
+    return matchSearch && matchType
+  })
+
   return (
-    <div className="flex h-[calc(100vh-9.5rem)] flex-col md:flex-row rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-      {/* Channels Sidebar */}
-      <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/70 flex flex-col">
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
+    <div className="flex h-[calc(100dvh-5.5rem)] sm:h-[calc(100vh-9.5rem)] flex-col md:flex-row rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+      {/* Channels Sidebar (Responsive: shown on desktop OR when mobileTab === 'channels') */}
+      <div
+        className={`w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/70 flex flex-col ${
+          mobileTab === 'messages' ? 'hidden md:flex' : 'flex'
+        }`}
+      >
+        <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-blue-600" />
+            <MessageSquare className="h-5 w-5 text-emerald-600" />
             <h2 className="text-sm font-bold text-slate-900">ห้องสื่อสารภายใน</h2>
           </div>
           <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200">
@@ -223,14 +241,67 @@ export const ChatPage: React.FC = () => {
           </span>
         </div>
 
+        {/* Channel Search & Category Filter (ข้อ 3) */}
+        <div className="p-2 border-b border-slate-200 bg-white space-y-1.5 shrink-0">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={channelSearch}
+              onChange={(e) => setChannelSearch(e.target.value)}
+              placeholder="ค้นหาห้องหรือกลุ่มสาระฯ..."
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-2 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600"
+            />
+          </div>
+
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar text-[10px]">
+            <button
+              onClick={() => setChannelFilter('all')}
+              className={`px-2 py-1 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                channelFilter === 'all' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              ทั้งหมด
+            </button>
+            <button
+              onClick={() => setChannelFilter('general')}
+              className={`px-2 py-1 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                channelFilter === 'general' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              ทั่วไป
+            </button>
+            <button
+              onClick={() => setChannelFilter('group')}
+              className={`px-2 py-1 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                channelFilter === 'group' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              กลุ่มสาระฯ
+            </button>
+            <button
+              onClick={() => setChannelFilter('announcement')}
+              className={`px-2 py-1 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                channelFilter === 'announcement' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              ประกาศ
+            </button>
+          </div>
+        </div>
+
         {/* Channel List */}
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {isLoadingChannels ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+            </div>
+          ) : filteredChannels.length === 0 ? (
+            <div className="py-8 text-center text-xs text-slate-400">
+              ไม่พบห้องสื่อสารที่ค้นหา
             </div>
           ) : (
-            channels.map((ch) => {
+            filteredChannels.map((ch) => {
               const isActive = activeChannel?.id === ch.id
               const unreadCount = unreadMap[ch.id] || 0
 
@@ -240,10 +311,12 @@ export const ChatPage: React.FC = () => {
                   onClick={() => {
                     setActiveChannel(ch)
                     markChannelAsRead(ch.id)
+                    localStorage.setItem('last_active_chat_channel', ch.id)
+                    setMobileTab('messages')
                   }}
                   className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-left transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-blue-50 text-blue-900 border border-blue-200 font-semibold shadow-2xs'
+                      ? 'bg-emerald-50 text-emerald-950 border border-emerald-200 font-semibold shadow-2xs'
                       : 'text-slate-600 hover:bg-white hover:text-slate-900 border border-transparent'
                   }`}
                 >
@@ -273,25 +346,39 @@ export const ChatPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-slate-50/30">
+      {/* Main Chat Area (Responsive: shown on desktop OR when mobileTab === 'messages') */}
+      <div
+        className={`flex-1 flex flex-col bg-slate-50/30 ${
+          mobileTab === 'channels' ? 'hidden md:flex' : 'flex'
+        }`}
+      >
         {/* Channel Header */}
         {activeChannel ? (
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5 bg-white">
-            <div className="flex items-center gap-2.5">
-              <div className="rounded-xl bg-slate-100 p-2 border border-slate-200">
+          <div className="flex items-center justify-between border-b border-slate-200 px-3 sm:px-5 py-3 bg-white shrink-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+              {/* Mobile Back to Channels button (ข้อ 4) */}
+              <button
+                type="button"
+                onClick={() => setMobileTab('channels')}
+                className="md:hidden p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shrink-0"
+                title="ย้อนกลับไปรายการห้อง"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+
+              <div className="rounded-xl bg-slate-100 p-2 border border-slate-200 shrink-0">
                 {renderChannelIcon(activeChannel.type)}
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <span>{activeChannel.name}</span>
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 truncate">
+                  <span className="truncate">{activeChannel.name}</span>
                   {activeChannel.type === 'announcement' && (
-                    <span className="rounded bg-purple-100 border border-purple-200 text-purple-700 px-2 py-0.2 text-[10px] font-semibold">
+                    <span className="rounded bg-purple-100 border border-purple-200 text-purple-700 px-2 py-0.2 text-[10px] font-semibold shrink-0">
                       เฉพาะแอดมินโพสต์
                     </span>
                   )}
                 </h3>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-slate-500 truncate">
                   {activeChannel.type === 'general' && 'พื้นที่แลกเปลี่ยนและประสานงานระหว่างคณะครูและบุคลากร'}
                   {activeChannel.type === 'announcement' && 'แจ้งข่าวสารสำคัญและนโยบายจากผู้บริหาร'}
                   {activeChannel.type === 'group' && `พื้นที่สนทนาเฉพาะกลุ่มสาระการเรียนรู้ ${activeChannel.user_groups?.name || ''}`}
@@ -333,12 +420,20 @@ export const ChatPage: React.FC = () => {
                   key={msg.id}
                   className={`flex items-start gap-2.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
                 >
-                  {/* Sender Avatar */}
-                  <img
-                    src={getAvatarUrl(sender?.avatar_url, sender?.name)}
-                    alt={sender?.name || 'User'}
-                    className="h-8 w-8 shrink-0 rounded-full object-cover border border-slate-200 bg-white"
-                  />
+                  {/* Sender Avatar with Online Presence Indicator (ข้อ 5) */}
+                  <div className="relative shrink-0">
+                    <img
+                      src={getAvatarUrl(sender?.avatar_url, sender?.name)}
+                      alt={sender?.name || 'User'}
+                      className="h-8 w-8 rounded-full object-cover border border-slate-200 bg-white"
+                    />
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${
+                        isUserOnline(msg.sender_id) ? 'bg-emerald-500' : 'bg-slate-300'
+                      }`}
+                      title={isUserOnline(msg.sender_id) ? 'ออนไลน์' : 'ออฟไลน์'}
+                    />
+                  </div>
 
                   {/* Message Bubble Container */}
                   <div className={`flex flex-col max-w-[75%] sm:max-w-[65%] ${isMe ? 'items-end' : 'items-start'}`}>

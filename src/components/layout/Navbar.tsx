@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Megaphone,
   TableProperties,
+  PieChart,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
@@ -67,7 +68,7 @@ export const Navbar: React.FC = () => {
           />
           <div className="flex flex-col">
             <span className="leading-tight font-bold text-slate-900 text-sm sm:text-base">
-              School Work Hub
+              School Work Club
             </span>
             <span className="text-[10px] font-normal text-slate-500 hidden sm:inline">
               สารสาสน์วิเทศราชพฤกษ์
@@ -103,6 +104,19 @@ export const Navbar: React.FC = () => {
                 >
                   <Megaphone className="h-3.5 w-3.5 text-emerald-600" />
                   <span>ข่าวประกาศ</span>
+                </Link>
+
+                {/* Personal Dashboard Link (ข้อ 17) */}
+                <Link
+                  to="/dashboard"
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap ${
+                    location.pathname === '/dashboard'
+                      ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <PieChart className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>แดชบอร์ด</span>
                 </Link>
 
                 {/* Teacher Task link */}
@@ -359,6 +373,14 @@ export const Navbar: React.FC = () => {
             }`}
           >
             ข่าวสาร
+          </Link>
+          <Link
+            to="/dashboard"
+            className={`px-2 py-1 rounded-md whitespace-nowrap ${
+              location.pathname === '/dashboard' ? 'text-emerald-800 font-semibold bg-emerald-50' : 'text-slate-600'
+            }`}
+          >
+            แดชบอร์ด
           </Link>
           {!isAdmin && (
             <Link

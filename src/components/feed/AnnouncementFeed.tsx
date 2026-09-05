@@ -11,6 +11,9 @@ import {
   X,
   Upload,
   Maximize2,
+  FileText,
+  Paperclip,
+  ExternalLink,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/services/supabase'
@@ -88,6 +91,37 @@ export const AnnouncementFeed: React.FC<AnnouncementFeedProps> = ({ previewCount
     }
   }
 
+  // Attachment state (Item 13)
+  const [attachmentUrl, setAttachmentUrl] = useState('')
+  const [attachmentName, setAttachmentName] = useState('')
+  const [attachmentType, setAttachmentType] = useState('PDF')
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false)
+  const docFileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleDocFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user?.id) return
+
+    setIsUploadingAttachment(true)
+    try {
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'pdf'
+      const filePath = `announcements/docs/${Date.now()}_${user.id}.${fileExt}`
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true })
+      if (uploadErr) {
+        setCreateError(`อัปโหลดไฟล์ไม่สำเร็จ: ${uploadErr.message}`)
+      } else {
+        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+        setAttachmentUrl(data.publicUrl)
+        setAttachmentName(file.name)
+        setAttachmentType(fileExt.toUpperCase())
+      }
+    } catch (err: unknown) {
+      setCreateError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setIsUploadingAttachment(false)
+    }
+  }
+
   const loadAnnouncements = useCallback(async () => {
     setIsLoading(true)
     const res = await fetchAnnouncements(user?.id, previewCount > 0 ? previewCount : 50)
@@ -112,14 +146,25 @@ export const AnnouncementFeed: React.FC<AnnouncementFeedProps> = ({ previewCount
     )
     if (!confirmed) return
 
+    const attachment = attachmentUrl.trim()
+      ? {
+          url: attachmentUrl.trim(),
+          name: attachmentName.trim() || 'เอกสารแนบประกอบประกาศ',
+          type: attachmentType || 'PDF',
+        }
+      : null
+
     setIsCreating(true)
     setCreateError(null)
-    const res = await createAnnouncement(user.id, newContent, newImageUrl || null)
+    const res = await createAnnouncement(user.id, newContent, newImageUrl || null, attachment)
     setIsCreating(false)
 
     if (res.success) {
       setNewContent('')
       setNewImageUrl('')
+      setAttachmentUrl('')
+      setAttachmentName('')
+      setAttachmentType('PDF')
       setShowCreateForm(false)
       showToast('โพสต์ประกาศข่าวสารเรียบร้อยแล้ว', 'success')
       loadAnnouncements()
@@ -380,6 +425,86 @@ export const AnnouncementFeed: React.FC<AnnouncementFeedProps> = ({ previewCount
                 </div>
               )}
 
+              {/* Document Attachment Input (Item 13) */}
+              <input
+                type="file"
+                ref={docFileInputRef}
+                onChange={handleDocFileChange}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.txt"
+                className="hidden"
+              />
+
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Paperclip className="h-3.5 w-3.5 text-emerald-600" />
+                    แนบไฟล์เอกสารประกอบ (PDF, Word, Excel หรือ ลิงก์ Google Drive)
+                  </span>
+                  {attachmentUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAttachmentUrl('')
+                        setAttachmentName('')
+                        setAttachmentType('PDF')
+                      }}
+                      className="text-[11px] text-red-600 hover:underline cursor-pointer"
+                    >
+                      ลบไฟล์แนบ
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => docFileInputRef.current?.click()}
+                    disabled={isUploadingAttachment}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shrink-0"
+                  >
+                    {isUploadingAttachment ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5 text-emerald-600" />
+                    )}
+                    <span>{isUploadingAttachment ? 'กำลังอัปโหลด...' : 'อัปโหลดเอกสาร'}</span>
+                  </button>
+
+                  <div className="flex-1 flex items-center gap-1.5">
+                    <input
+                      type="url"
+                      value={attachmentUrl}
+                      onChange={(e) => setAttachmentUrl(e.target.value)}
+                      placeholder="หรือวางลิงก์ Google Drive / ลิงก์ไฟล์ภายนอก..."
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {attachmentUrl && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="text"
+                      value={attachmentName}
+                      onChange={(e) => setAttachmentName(e.target.value)}
+                      placeholder="ชื่อเอกสารแนบ (เช่น หนังสือราชการคำสั่งที่ 12/2569)"
+                      className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
+                    />
+                    <select
+                      value={attachmentType}
+                      onChange={(e) => setAttachmentType(e.target.value)}
+                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none shrink-0"
+                    >
+                      <option value="PDF">PDF</option>
+                      <option value="DOCX">Word (DOCX)</option>
+                      <option value="XLSX">Excel (XLSX)</option>
+                      <option value="DRIVE">Google Drive</option>
+                      <option value="LINK">ลิงก์เว็บ</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="button"
@@ -485,6 +610,36 @@ export const AnnouncementFeed: React.FC<AnnouncementFeedProps> = ({ previewCount
                       </span>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Document Attachment (Item 13) */}
+              {ann.attachment_url && (
+                <div className="px-4 pb-3">
+                  <a
+                    href={ann.attachment_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 rounded-xl border border-emerald-200/80 bg-emerald-50/50 hover:bg-emerald-100/70 text-emerald-950 transition-all group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="rounded-lg bg-emerald-600 text-white p-2 shrink-0 group-hover:scale-105 transition-transform">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate group-hover:text-emerald-800">
+                          {ann.attachment_name || 'เอกสารแนบประกอบประกาศ'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500">
+                          <span className="font-semibold uppercase px-1.5 py-0.5 rounded bg-emerald-200/70 text-emerald-800 font-mono">
+                            {ann.attachment_type || 'เอกสาร'}
+                          </span>
+                          <span>คลิกเพื่อเปิดดูหรือดาวน์โหลด</span>
+                        </div>
+                      </div>
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-emerald-600 shrink-0 ml-2 group-hover:translate-x-0.5 transition-transform" />
+                  </a>
                 </div>
               )}
 
@@ -691,14 +846,20 @@ export const AnnouncementFeed: React.FC<AnnouncementFeedProps> = ({ previewCount
         })
       )}
 
-      {/* Lightbox Modal (ข้อ 3) */}
+      {/* Lightbox Modal (ข้อ 3 & 16) */}
       {lightboxAnnouncement && (
         <AnnouncementImageModal
-          announcement={lightboxAnnouncement}
+          announcement={
+            announcements.find((a) => a.id === lightboxAnnouncement.id) || lightboxAnnouncement
+          }
           userId={user?.id}
           onClose={() => setLightboxAnnouncement(null)}
           onLike={() => handleQuickLike(lightboxAnnouncement)}
-          userReaction={lightboxAnnouncement.user_reaction}
+          onSelectReaction={handleSelectReaction}
+          userReaction={
+            (announcements.find((a) => a.id === lightboxAnnouncement.id) || lightboxAnnouncement)
+              .user_reaction
+          }
         />
       )}
     </div>

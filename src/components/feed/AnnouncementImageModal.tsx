@@ -7,11 +7,14 @@ import {
   MessageCircle,
   Send,
   Loader2,
+  FileText,
 } from 'lucide-react'
 import { getAvatarUrl } from '@/utils/avatarUtils'
 import {
   type Announcement,
   type AnnouncementComment,
+  type ReactionType,
+  REACTION_CONFIG,
   fetchAnnouncementComments,
   addAnnouncementComment,
 } from '@/services/announcementService'
@@ -21,6 +24,7 @@ interface AnnouncementImageModalProps {
   userId?: string
   onClose: () => void
   onLike: (id: string) => void
+  onSelectReaction?: (id: string, reaction: ReactionType) => void
   userReaction?: string | null
 }
 
@@ -29,15 +33,26 @@ export const AnnouncementImageModal: React.FC<AnnouncementImageModalProps> = ({
   userId,
   onClose,
   onLike,
+  onSelectReaction,
   userReaction,
 }) => {
   const [comments, setComments] = useState<AnnouncementComment[]>([])
   const [isLoadingComments, setIsLoadingComments] = useState(true)
   const [newComment, setNewComment] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [activeReaction, setActiveReaction] = useState<string | null>(
+    userReaction || announcement.user_reaction || null
+  )
+  const [likesCount, setLikesCount] = useState<number>(announcement.likes_count || 0)
+  const [showReactionPopup, setShowReactionPopup] = useState(false)
 
   const author = announcement.profiles
   const avatarUrl = getAvatarUrl(author?.avatar_url || null, author?.name || 'ผู้ดูแลระบบ')
+
+  useEffect(() => {
+    setActiveReaction(userReaction || announcement.user_reaction || null)
+    setLikesCount(announcement.likes_count || 0)
+  }, [userReaction, announcement.user_reaction, announcement.likes_count])
 
   useEffect(() => {
     let isMounted = true
@@ -74,6 +89,23 @@ export const AnnouncementImageModal: React.FC<AnnouncementImageModalProps> = ({
     }
   }
 
+  const handleReactionClick = (rType: ReactionType) => {
+    setShowReactionPopup(false)
+    if (activeReaction === rType) {
+      setActiveReaction(null)
+      setLikesCount((prev) => Math.max(0, prev - 1))
+    } else {
+      if (!activeReaction) setLikesCount((prev) => prev + 1)
+      setActiveReaction(rType)
+    }
+
+    if (onSelectReaction) {
+      onSelectReaction(announcement.id, rType)
+    } else {
+      onLike(announcement.id)
+    }
+  }
+
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr)
     return d.toLocaleDateString('th-TH', {
@@ -84,6 +116,10 @@ export const AnnouncementImageModal: React.FC<AnnouncementImageModalProps> = ({
       minute: '2-digit',
     })
   }
+
+  const currentReactionConfig = activeReaction
+    ? REACTION_CONFIG[activeReaction as ReactionType]
+    : null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md animate-in fade-in duration-150">
@@ -156,50 +192,104 @@ export const AnnouncementImageModal: React.FC<AnnouncementImageModalProps> = ({
               {announcement.content}
             </div>
 
+            {/* Document Attachment (Item 13) */}
+            {announcement.attachment_url && (
+              <a
+                href={announcement.attachment_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-950 transition-all group shadow-2xs"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="rounded-lg bg-emerald-600 text-white p-2 shrink-0 group-hover:scale-105 transition-transform">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-800 truncate group-hover:text-emerald-800">
+                      {announcement.attachment_name || 'เอกสารแนบประกอบประกาศ'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500">
+                      <span className="font-semibold uppercase px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-800">
+                        {announcement.attachment_type || 'ไฟล์เอกสาร'}
+                      </span>
+                      <span>คลิกเพื่อเปิดดูหรือดาวน์โหลด</span>
+                    </div>
+                  </div>
+                </div>
+                <ExternalLink className="h-4 w-4 text-emerald-600 shrink-0 ml-2 group-hover:translate-x-0.5 transition-transform" />
+              </a>
+            )}
+
             {/* Reaction counts */}
             <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
               <span>
-                {(announcement.likes_count || 0) > 0 && (
+                {likesCount > 0 && (
                   <span className="flex items-center gap-1 font-medium text-emerald-700">
                     <span className="bg-emerald-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-[9px]">
-                      👍
+                      {currentReactionConfig?.emoji || '👍'}
                     </span>
-                    {announcement.likes_count} คนถูกใจ
+                    {likesCount} คนแสดงความรู้สึก
                   </span>
                 )}
               </span>
               <span>{comments.length} ความคิดเห็น</span>
             </div>
 
-            {/* Like & Comment action buttons */}
-            <div className="flex items-center gap-2 py-1.5 border-y border-slate-100">
-              <button
-                onClick={() => onLike(announcement.id)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                  announcement.user_has_liked
-                    ? 'text-emerald-700 bg-emerald-50'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
+            {/* Like & Comment action buttons with interactive reaction popup */}
+            <div className="relative py-1.5 border-y border-slate-100 flex items-center gap-2">
+              {/* Reaction Popup Bar */}
+              {showReactionPopup && (
+                <div
+                  onMouseEnter={() => setShowReactionPopup(true)}
+                  onMouseLeave={() => setShowReactionPopup(false)}
+                  className="absolute -top-12 left-2 z-50 bg-white/95 backdrop-blur-md rounded-full px-2.5 py-1.5 shadow-xl border border-slate-200 flex items-center gap-2 animate-in zoom-in-90 duration-150"
+                >
+                  {(Object.keys(REACTION_CONFIG) as ReactionType[]).map((rType) => {
+                    const cfg = REACTION_CONFIG[rType]
+                    return (
+                      <button
+                        key={rType}
+                        type="button"
+                        onClick={() => handleReactionClick(rType)}
+                        className="p-1 hover:scale-135 transition-transform cursor-pointer flex flex-col items-center group/emoji"
+                        title={cfg.label}
+                      >
+                        <span className="text-2xl drop-shadow-xs">{cfg.emoji}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              <div
+                className="flex-1 relative"
+                onMouseEnter={() => setShowReactionPopup(true)}
+                onMouseLeave={() => setShowReactionPopup(false)}
               >
-                <ThumbsUp
-                  className={`h-4 w-4 ${announcement.user_has_liked ? 'fill-emerald-600' : ''}`}
-                />
-                <span>
-                  {userReaction === 'love'
-                    ? '❤️ รักเลย'
-                    : userReaction === 'haha'
-                    ? '😆 ฮาฮา'
-                    : userReaction === 'wow'
-                    ? '😮 ว้าว'
-                    : userReaction === 'sad'
-                    ? '😢 เศร้า'
-                    : userReaction === 'angry'
-                    ? '😡 โกรธ'
-                    : announcement.user_has_liked
-                    ? 'ถูกใจแล้ว'
-                    : 'ถูกใจ'}
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleReactionClick((activeReaction as ReactionType) || 'like')}
+                  className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                    activeReaction
+                      ? currentReactionConfig
+                        ? `${currentReactionConfig.color} bg-slate-50 font-bold`
+                        : 'text-emerald-700 bg-emerald-50'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {activeReaction && currentReactionConfig ? (
+                    <>
+                      <span className="text-base">{currentReactionConfig.emoji}</span>
+                      <span>{currentReactionConfig.label}</span>
+                    </>
+                  ) : (
+                    <>
+                      <ThumbsUp className="h-4 w-4" />
+                      <span>ถูกใจ</span>
+                    </>
+                  )}
+                </button>
+              </div>
 
               <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50 cursor-default">
                 <MessageCircle className="h-4 w-4" />

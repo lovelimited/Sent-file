@@ -28,7 +28,7 @@ export const PWAInstallBanner: React.FC = () => {
 
             <div>
               <div className="flex items-center gap-1.5">
-                <h4 className="text-sm font-bold text-white">ติดตั้งแอป School Work Hub</h4>
+                <h4 className="text-sm font-bold text-white">ติดตั้งแอป School Work Club</h4>
                 <Sparkles className="h-3.5 w-3.5 text-amber-400" />
               </div>
               <p className="mt-0.5 text-xs text-slate-300 leading-relaxed">

@@ -26,7 +26,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
           </div>
           <div className="text-center">
             <p className="text-sm font-semibold text-slate-700">กำลังตรวจสอบสิทธิ์การเข้าใช้งาน...</p>
-            <p className="text-xs text-slate-500 mt-0.5">School Work Hub — สารสาสน์วิเทศราชพฤกษ์</p>
+            <p className="text-xs text-slate-500 mt-0.5">School Work Club — สารสาสน์วิเทศราชพฤกษ์</p>
           </div>
         </div>
       </div>

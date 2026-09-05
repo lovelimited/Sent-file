@@ -24,6 +24,7 @@ export const NotificationBell: React.FC = () => {
 
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const [visibleLimit, setVisibleLimit] = useState(6)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const unreadCount = notifications.filter((n) => !n.read).length
@@ -110,14 +111,14 @@ export const NotificationBell: React.FC = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Button */}
+      {/* Bell Button - Pure Black (ข้อ 6) */}
       <button
         onClick={() => setIsOpen((prev) => !prev)}
         title="การแจ้งเตือน"
         aria-label="การแจ้งเตือน"
-        className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700 hover:text-white transition-colors cursor-pointer"
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-black border border-black text-white hover:bg-neutral-800 transition-colors cursor-pointer shadow-xs"
       >
-        <Bell className="h-4 w-4" />
+        <Bell className="h-4 w-4 text-white" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-slate-950">
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -150,7 +151,7 @@ export const NotificationBell: React.FC = () => {
             )}
           </div>
 
-          {/* List */}
+          {/* List: Shows in batches of 6 (ข้อ 6) */}
           <div className="max-h-[360px] overflow-y-auto divide-y divide-slate-800/60">
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-500">
@@ -158,7 +159,7 @@ export const NotificationBell: React.FC = () => {
                 <p>ยังไม่มีการแจ้งเตือน</p>
               </div>
             ) : (
-              notifications.map((notif) => (
+              notifications.slice(0, visibleLimit).map((notif) => (
                 <div
                   key={notif.id}
                   onClick={() => handleNotificationClick(notif)}
@@ -187,6 +188,19 @@ export const NotificationBell: React.FC = () => {
                   </div>
                 </div>
               ))
+            )}
+
+            {/* Load More Button: View previous notifications in batches of 6 (ข้อ 6) */}
+            {notifications.length > visibleLimit && (
+              <div className="p-2.5 text-center bg-slate-950/50">
+                <button
+                  type="button"
+                  onClick={() => setVisibleLimit((prev) => prev + 6)}
+                  className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors cursor-pointer border border-slate-700"
+                >
+                  ดูการแจ้งเตือนก่อนหน้า (+6 รายการ) • เหลืออีก {notifications.length - visibleLimit}
+                </button>
+              </div>
             )}
           </div>
 

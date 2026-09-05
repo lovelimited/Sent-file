@@ -8,8 +8,10 @@ import {
   Volume2,
   VolumeX,
   ExternalLink,
+  Search,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { usePresence } from '@/contexts/PresenceContext'
 import {
   fetchAccessibleChannels,
   fetchChannelMessages,
@@ -38,6 +40,8 @@ export const FloatingChatDock: React.FC = () => {
   const [newMessage, setNewMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(true)
+  const [channelSearch, setChannelSearch] = useState('')
+  const { isUserOnline } = usePresence()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatScrollContainerRef = useRef<HTMLDivElement>(null)
@@ -100,7 +104,10 @@ export const FloatingChatDock: React.FC = () => {
     fetchAccessibleChannels().then((res) => {
       if (isMounted && res.data && res.data.length > 0) {
         setChannels(res.data)
-        setActiveChannel((prev) => prev || res.data![0])
+        // Requirement 2: Show latest active group
+        const savedChannelId = localStorage.getItem('last_active_chat_channel')
+        const initial = res.data.find((c) => c.id === savedChannelId) || res.data[0]
+        setActiveChannel(initial)
         refreshUnreads(res.data)
       }
     })
@@ -151,8 +158,19 @@ export const FloatingChatDock: React.FC = () => {
           const newMsg = payload.new as { sender_id: string; channel_id: string }
           if (newMsg.sender_id === user.id) return
 
-          // Play sound
+          // Play sound (ข้อ 1)
           playChime()
+
+          // Requirement 1 & 2: Auto-open floating chat dock & switch to incoming message channel
+          setIsOpen(true)
+          localStorage.setItem('last_active_chat_channel', newMsg.channel_id)
+          setChannels((prevChannels) => {
+            const target = prevChannels.find((c) => c.id === newMsg.channel_id)
+            if (target) {
+              setActiveChannel(target)
+            }
+            return prevChannels
+          })
 
           // If docked and chatting in this channel, append
           if (isOpen && activeChannel?.id === newMsg.channel_id) {
@@ -201,7 +219,7 @@ export const FloatingChatDock: React.FC = () => {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-20 sm:bottom-24 right-4 sm:right-6 z-50">
       {/* Floating Window (Expanded) */}
       {isOpen ? (
         <div className="w-[350px] sm:w-[380px] h-[480px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200">
@@ -251,35 +269,52 @@ export const FloatingChatDock: React.FC = () => {
             </div>
           </div>
 
-          {/* Channel Selector Chips Bar */}
+          {/* Channel Selector Chips Bar (ข้อ 3) */}
           {channels.length > 1 && (
-            <div className="bg-slate-50 border-b border-slate-200 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-              {channels.map((ch) => {
-                const isSelected = activeChannel?.id === ch.id
-                const unread = unreadMap[ch.id] || 0
-                return (
-                  <button
-                    key={ch.id}
-                    onClick={() => {
-                      setActiveChannel(ch)
-                      localStorage.setItem(`chat_last_read_${ch.id}`, new Date().toISOString())
-                      setUnreadMap((prev) => ({ ...prev, [ch.id]: 0 }))
-                    }}
-                    className={`text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                      isSelected
-                        ? 'bg-purple-600 text-white shadow-xs'
-                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span>{ch.name}</span>
-                    {unread > 0 && !isSelected && (
-                      <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.2 rounded-full font-bold">
-                        {unread}
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
+            <div className="bg-slate-50 border-b border-slate-200 px-3 py-1.5 space-y-1.5">
+              {channels.length > 4 && (
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                  <input
+                    type="text"
+                    value={channelSearch}
+                    onChange={(e) => setChannelSearch(e.target.value)}
+                    placeholder="ค้นหาห้องสื่อสาร..."
+                    className="w-full bg-white border border-slate-200 rounded-lg pl-7 pr-2 py-0.5 text-[10px] text-slate-700 placeholder-slate-400 focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                {channels
+                  .filter((ch) => !channelSearch.trim() || ch.name.toLowerCase().includes(channelSearch.toLowerCase()))
+                  .map((ch) => {
+                    const isSelected = activeChannel?.id === ch.id
+                    const unread = unreadMap[ch.id] || 0
+                    return (
+                      <button
+                        key={ch.id}
+                        onClick={() => {
+                          setActiveChannel(ch)
+                          localStorage.setItem('last_active_chat_channel', ch.id)
+                          localStorage.setItem(`chat_last_read_${ch.id}`, new Date().toISOString())
+                          setUnreadMap((prev) => ({ ...prev, [ch.id]: 0 }))
+                        }}
+                        className={`text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap font-medium transition-colors cursor-pointer flex items-center gap-1 shrink-0 ${
+                          isSelected
+                            ? 'bg-purple-600 text-white shadow-xs'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>{ch.name}</span>
+                        {unread > 0 && !isSelected && (
+                          <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.2 rounded-full font-bold">
+                            {unread}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+              </div>
             </div>
           )}
 
@@ -310,11 +345,19 @@ export const FloatingChatDock: React.FC = () => {
                     className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}
                   >
                     {!isMe && (
-                      <img
-                        src={avatar}
-                        alt={senderName}
-                        className="h-6 w-6 rounded-full border border-slate-200 bg-white shrink-0 object-cover mb-0.5"
-                      />
+                      <div className="relative shrink-0 mb-0.5">
+                        <img
+                          src={avatar}
+                          alt={senderName}
+                          className="h-6 w-6 rounded-full border border-slate-200 bg-white object-cover"
+                        />
+                        <span
+                          className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-1 ring-white ${
+                            isUserOnline(msg.sender_id) ? 'bg-emerald-500' : 'bg-slate-300'
+                          }`}
+                          title={isUserOnline(msg.sender_id) ? 'ออนไลน์' : 'ออฟไลน์'}
+                        />
+                      </div>
                     )}
                     <div className={`max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
                       {!isMe && (

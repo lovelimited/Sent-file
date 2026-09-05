@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { PresenceProvider } from '@/contexts/PresenceContext'
 import { Layout } from '@/components/layout/Layout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { Loader2 } from 'lucide-react'
@@ -37,6 +38,9 @@ const AnnouncementFeedPage = lazy(() =>
 const TaskOverviewPage = lazy(() =>
   import('@/pages/admin/TaskOverviewPage').then((m) => ({ default: m.TaskOverviewPage }))
 )
+const DashboardPage = lazy(() =>
+  import('@/pages/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage }))
+)
 
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center py-20">
@@ -47,8 +51,9 @@ const PageLoader: React.FC = () => (
 export const App: React.FC = () => {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Suspense fallback={<PageLoader />}>
+      <PresenceProvider>
+        <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public Route: Login */}
             <Route path="/login" element={<LoginPage />} />
@@ -60,6 +65,16 @@ export const App: React.FC = () => {
                 element={
                   <ProtectedRoute>
                     <HomePage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Personal Task Dashboard Route (ข้อ 17) */}
+              <Route
+                path="dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
                   </ProtectedRoute>
                 }
               />
@@ -161,7 +176,8 @@ export const App: React.FC = () => {
             </Route>
           </Routes>
         </Suspense>
-      </BrowserRouter>
+        </BrowserRouter>
+      </PresenceProvider>
     </AuthProvider>
   )
 }

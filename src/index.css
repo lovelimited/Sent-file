@@ -38,8 +38,19 @@ body {
 }
 
 @media print {
-  body {
+  @page {
+    margin: 1cm;
+    size: landscape;
+  }
+  nav, header, footer, .print\:hidden, #floating-chat-dock, .no-print {
+    display: none !important;
+  }
+  body, #root, main {
     background-color: #ffffff !important;
     color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 }

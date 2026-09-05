@@ -212,6 +212,7 @@ export interface Database {
           feedback: string | null
           reviewed_by: string | null
           reviewed_at: string | null
+          completed_subtask_ids?: string[] | null
           created_at: string
           updated_at: string
         }
@@ -226,6 +227,7 @@ export interface Database {
           feedback?: string | null
           reviewed_by?: string | null
           reviewed_at?: string | null
+          completed_subtask_ids?: string[] | null
           created_at?: string
           updated_at?: string
         }
@@ -240,6 +242,7 @@ export interface Database {
           feedback?: string | null
           reviewed_by?: string | null
           reviewed_at?: string | null
+          completed_subtask_ids?: string[] | null
           created_at?: string
           updated_at?: string
         }
@@ -433,6 +436,9 @@ export interface Database {
           author_id: string
           content: string
           image_url: string | null
+          attachment_url?: string | null
+          attachment_name?: string | null
+          attachment_type?: string | null
           created_at: string
         }
         Insert: {
@@ -440,6 +446,9 @@ export interface Database {
           author_id: string
           content: string
           image_url?: string | null
+          attachment_url?: string | null
+          attachment_name?: string | null
+          attachment_type?: string | null
           created_at?: string
         }
         Update: {
@@ -447,6 +456,9 @@ export interface Database {
           author_id?: string
           content?: string
           image_url?: string | null
+          attachment_url?: string | null
+          attachment_name?: string | null
+          attachment_type?: string | null
           created_at?: string
         }
         Relationships: [

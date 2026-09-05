@@ -12,7 +12,7 @@ export const Footer: React.FC = () => {
               className="h-6 w-6 object-contain rounded-full border border-amber-200"
             />
             <span>
-              School Work Hub © {new Date().getFullYear()} — โรงเรียนสารสาสน์วิเทศราชพฤกษ์
+              School Work Club © {new Date().getFullYear()} — โรงเรียนสารสาสน์วิเทศราชพฤกษ์
             </span>
           </div>
 

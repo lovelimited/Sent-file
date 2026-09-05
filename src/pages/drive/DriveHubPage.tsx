@@ -33,10 +33,12 @@ import { supabase } from '@/services/supabase'
 import { showConfirm, showToast, showError } from '@/utils/sweetalert'
 
 const PRESET_CATEGORIES = [
-  { id: 'template', name: 'แม่แบบเอกสาร' },
-  { id: 'folder', name: 'โฟลเดอร์ Drive' },
-  { id: 'guideline', name: 'คู่มือ / แนวปฏิบัติ' },
-  { id: 'asset', name: 'ตราสัญลักษณ์ / สื่อ' },
+  { id: 'lesson_plan', name: 'แผนการจัดการเรียนรู้' },
+  { id: 'pa_report', name: 'รายงานผลการปฏิบัติงาน (PA)' },
+  { id: 'research', name: 'วิจัยในชั้นเรียนและนวัตกรรม' },
+  { id: 'academic', name: 'เอกสารวัดผลและวิชาการ' },
+  { id: 'awards', name: 'เกียรติบัตรและผลงาน' },
+  { id: 'forms', name: 'แบบฟอร์มโรงเรียน' },
 ]
 
 export const DriveHubPage: React.FC = () => {
@@ -53,7 +55,7 @@ export const DriveHubPage: React.FC = () => {
   const [addMode, setAddMode] = useState<'upload' | 'link'>('upload')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [categorySelection, setCategorySelection] = useState<string>('template')
+  const [categorySelection, setCategorySelection] = useState<string>('lesson_plan')
   const [customCategoryName, setCustomCategoryName] = useState<string>('')
   const [url, setUrl] = useState('')
   const [targetGroupId, setTargetGroupId] = useState('')
@@ -91,11 +93,7 @@ export const DriveHubPage: React.FC = () => {
     return resources.filter((item) => {
       const matchCategory =
         activeCategory === 'all' ||
-        item.category === activeCategory ||
-        (activeCategory === 'แม่แบบเอกสาร' && item.category === 'template') ||
-        (activeCategory === 'โฟลเดอร์ Drive' && item.category === 'folder') ||
-        (activeCategory === 'คู่มือ / แนวปฏิบัติ' && item.category === 'guideline') ||
-        (activeCategory === 'ตราสัญลักษณ์ / สื่อ' && item.category === 'asset')
+        item.category === activeCategory
 
       const matchSearch =
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -109,7 +107,7 @@ export const DriveHubPage: React.FC = () => {
   const handleOpenAddModal = () => {
     setTitle('')
     setDescription('')
-    setCategorySelection('template')
+    setCategorySelection('lesson_plan')
     setCustomCategoryName('')
     setUrl('')
     setFileToUpload(null)
@@ -239,6 +237,12 @@ export const DriveHubPage: React.FC = () => {
   }
 
   const handleDeleteResource = async (item: DriveResourceWithGroup) => {
+    // Requirement 8: Deletion restricted to Admin only
+    if (!isAdmin) {
+      showError('ไม่มีสิทธิ์ดำเนินการ', 'การลบทรัพยากรอนุญาตเฉพาะผู้ดูแลระบบ (Admin) เท่านั้น')
+      return
+    }
+
     const confirmed = await showConfirm(
       'ยืนยันการลบทรัพยากร?',
       `คุณต้องการลบ "${item.title}" ออกจากคลังใช่หรือไม่?`,
@@ -427,7 +431,8 @@ export const DriveHubPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredResources.map((item) => {
-            const canDelete = isAdmin || item.created_by === user?.id
+            // Requirement 8: Deletion allowed ONLY for admins
+            const canDelete = isAdmin
             const isDirectFile = !item.url.includes('drive.google.com')
 
             return (

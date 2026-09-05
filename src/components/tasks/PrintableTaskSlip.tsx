@@ -102,7 +102,7 @@ export const PrintableTaskSlip: React.FC<PrintableTaskSlipProps> = ({
               ใบนำส่งผลงานและการปฏิบัติงานราชการ
             </h2>
             <p className="text-xs text-slate-600 mt-0.5">
-              ระบบบริหารจัดการภาระงานฝ่ายวิชาการและงานสนับสนุนการศึกษา (School Work Hub)
+              ระบบบริหารจัดการภาระงานฝ่ายวิชาการและงานสนับสนุนการศึกษา (School Work Club)
             </p>
           </div>
 

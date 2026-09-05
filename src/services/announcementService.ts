@@ -5,6 +5,9 @@ export interface Announcement {
   author_id: string
   content: string
   image_url: string | null
+  attachment_url?: string | null
+  attachment_name?: string | null
+  attachment_type?: string | null
   created_at: string
   profiles?: {
     id: string
@@ -132,7 +135,12 @@ export async function fetchAnnouncements(
 export async function createAnnouncement(
   authorId: string,
   content: string,
-  imageUrl?: string | null
+  imageUrl?: string | null,
+  attachment?: {
+    url: string
+    name: string
+    type?: string
+  } | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const cleanContent = content.trim()
@@ -140,13 +148,14 @@ export async function createAnnouncement(
       return { success: false, error: 'กรุณากรอกเนื้อหาประกาศ' }
     }
 
-    const { error } = await supabase
-      .from('announcements')
-      .insert({
-        author_id: authorId,
-        content: cleanContent,
-        image_url: imageUrl?.trim() || null,
-      })
+    const { error } = await supabase.from('announcements').insert({
+      author_id: authorId,
+      content: cleanContent,
+      image_url: imageUrl || null,
+      attachment_url: attachment?.url || null,
+      attachment_name: attachment?.name || null,
+      attachment_type: attachment?.type || null,
+    })
 
     if (error) {
       return { success: false, error: error.message }

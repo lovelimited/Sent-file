@@ -1,12 +1,10 @@
 import React, { useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
-import { supabase } from '@/services/supabase'
 import { Lock, User, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react'
 
 export const LoginPage: React.FC = () => {
-  const { isAuthenticated, profile, login, isLoading: isAuthLoading } = useAuth()
-  const location = useLocation()
+  const { isAuthenticated, login, isLoading: isAuthLoading } = useAuth()
   const navigate = useNavigate()
 
   const [username, setUsername] = useState('')
@@ -15,14 +13,9 @@ export const LoginPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated - Always go to Home page
   if (isAuthenticated && !isAuthLoading) {
-    let from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
-    // If destination is admin route but user is teacher, send to home
-    if (from.startsWith('/admin') && profile?.role !== 'admin') {
-      from = '/'
-    }
-    return <Navigate to={from} replace />
+    return <Navigate to="/" replace />
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,14 +38,8 @@ export const LoginPage: React.FC = () => {
     try {
       const result = await login({ username: cleanUsername, password })
       if (result.success) {
-        let from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
-        // Check role returned or user session
-        const { data: sessionData } = await supabase.auth.getUser()
-        const userRole = sessionData.user?.user_metadata?.role || 'teacher'
-        if (from.startsWith('/admin') && userRole !== 'admin') {
-          from = '/'
-        }
-        navigate(from, { replace: true })
+        // Requirement 12: Always navigate to Home page (/) for all users
+        navigate('/', { replace: true })
       } else {
         setErrorMessage(result.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
       }
@@ -83,7 +70,7 @@ export const LoginPage: React.FC = () => {
             Sarasas Witaed Ratchaphruek School
           </p>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl mt-1">
-            School Work Hub
+            School Work Club
           </h1>
           <p className="mt-1.5 text-xs text-slate-500">
             ระบบบริหารจัดการภาระงานและเอกสารฝ่ายวิชาการ
@@ -117,7 +104,7 @@ export const LoginPage: React.FC = () => {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                  placeholder="เช่น teacher_thai หรือ admin"
+                  placeholder="Username"
                   className="block w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
                 />
               </div>
@@ -171,6 +158,16 @@ export const LoginPage: React.FC = () => {
               )}
             </button>
           </form>
+        </div>
+
+        {/* Developer Credits (ข้อ 11) */}
+        <div className="mt-6 text-center text-xs text-slate-500">
+          <p className="font-medium text-slate-600">
+            พัฒนาโดย ม.กฤตพจน์ แก้วกา
+          </p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            โรงเรียนสารสาสน์วิเทศราชพฤกษ์ • Sarasas Witaed Ratchaphruek School
+          </p>
         </div>
       </div>
     </div>

@@ -56,7 +56,7 @@ export const HomePage: React.FC = () => {
               {isAuthenticated && profile ? (
                 <span>ยินดีต้อนรับ, {profile.name}</span>
               ) : (
-                <span>ระบบบริหารจัดการงานโรงเรียน (School Work Hub)</span>
+                <span>ระบบบริหารจัดการงานโรงเรียน (School Work Club)</span>
               )}
             </h1>
             <p className="text-slate-600 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
