@@ -164,8 +164,9 @@ export const ChatPage: React.FC = () => {
 
   // Listen to all channels for unread counter updates
   useEffect(() => {
+    const channelName = `chat-sidebar-unread-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const channelListener = supabase
-      .channel('chat-sidebar-unread-listener')
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
@@ -218,8 +219,9 @@ export const ChatPage: React.FC = () => {
 
   // Global realtime activity listener for dynamic channel sorting (Requirement 5)
   useEffect(() => {
+    const globalChannelName = `chat-page-global-activity-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const globalChannel = supabase
-      .channel('chat-page-global-activity')
+      .channel(globalChannelName)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },

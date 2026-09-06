@@ -52,8 +52,9 @@ export const ChatRealtimeNotifier: React.FC = () => {
   useEffect(() => {
     if (!user?.id) return
 
+    const channelName = `global-chat-notifications-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const channel = supabase
-      .channel('global-chat-notifications')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {

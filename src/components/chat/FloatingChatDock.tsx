@@ -157,11 +157,20 @@ export const FloatingChatDock: React.FC = () => {
     }
   }, [activeChannel, isOpen])
 
+  // References to keep realtime incoming subscription stable and prevent channel recreation on state updates
+  const activeChannelRef = useRef(activeChannel)
+  activeChannelRef.current = activeChannel
+  const isOpenRef = useRef(isOpen)
+  isOpenRef.current = isOpen
+  const playChimeRef = useRef(playChime)
+  playChimeRef.current = playChime
+
   // Global realtime incoming message detector for dock & dynamic sorting (Requirement 5)
   useEffect(() => {
     if (!user?.id) return
+    const channelName = `floating-chat-incoming-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const channel = supabase
-      .channel('floating-chat-incoming')
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
@@ -180,7 +189,7 @@ export const FloatingChatDock: React.FC = () => {
           if (newMsg.sender_id === user.id) return
 
           // Play sound (ข้อ 1)
-          playChime()
+          playChimeRef.current()
 
           // Requirement 1 & 2: Auto-open floating chat dock & switch to incoming message channel
           setIsOpen(true)
@@ -194,7 +203,7 @@ export const FloatingChatDock: React.FC = () => {
           })
 
           // If docked and chatting in this channel, append
-          if (isOpen && activeChannel?.id === newMsg.channel_id) {
+          if (isOpenRef.current && activeChannelRef.current?.id === newMsg.channel_id) {
             localStorage.setItem(`chat_last_read_${newMsg.channel_id}`, new Date().toISOString())
           } else {
             // Increment unread count
@@ -205,8 +214,10 @@ export const FloatingChatDock: React.FC = () => {
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, [user?.id, activeChannel?.id, isOpen, playChime])
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()

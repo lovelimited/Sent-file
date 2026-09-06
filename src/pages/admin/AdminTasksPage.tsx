@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ClipboardList,
   Plus,
@@ -79,28 +80,36 @@ export const AdminTasksPage: React.FC = () => {
 
   const loadTasks = useCallback(() => {
     setIsLoading(true)
-    Promise.all([fetchAdminTasks(), fetchGroups(), fetchUsers()]).then(
-      ([tasksRes, groupsRes, usersRes]) => {
+    Promise.all([fetchAdminTasks(), fetchGroups(), fetchUsers()])
+      .then(([tasksRes, groupsRes, usersRes]) => {
         if (tasksRes.data) setTasks(tasksRes.data)
         if (groupsRes.data) setGroups(groupsRes.data)
         if (usersRes.data) setTeachers(usersRes.data)
         setIsLoading(false)
-      }
-    )
+      })
+      .catch((err) => {
+        console.warn('[AdminTasksPage] Load tasks error:', err)
+        setIsLoading(false)
+      })
   }, [])
 
   useEffect(() => {
     let isMounted = true
-    Promise.all([fetchAdminTasks(), fetchGroups(), fetchUsers()]).then(
-      ([tasksRes, groupsRes, usersRes]) => {
+    Promise.all([fetchAdminTasks(), fetchGroups(), fetchUsers()])
+      .then(([tasksRes, groupsRes, usersRes]) => {
         if (isMounted) {
           if (tasksRes.data) setTasks(tasksRes.data)
           if (groupsRes.data) setGroups(groupsRes.data)
           if (usersRes.data) setTeachers(usersRes.data)
           setIsLoading(false)
         }
-      }
-    )
+      })
+      .catch((err) => {
+        if (isMounted) {
+          console.warn('[AdminTasksPage] Initial load error:', err)
+          setIsLoading(false)
+        }
+      })
     return () => {
       isMounted = false
     }
@@ -116,10 +125,12 @@ export const AdminTasksPage: React.FC = () => {
     setPriority('normal')
     setTaskCategory('แผนการจัดการเรียนรู้')
     setDriveFolderUrl('')
-    getMasterDriveUrl().then((url) => {
-      setMasterDriveUrl(url)
-      setDriveFolderUrl(url)
-    })
+    getMasterDriveUrl()
+      .then((url) => {
+        setMasterDriveUrl(url)
+        setDriveFolderUrl(url)
+      })
+      .catch(() => {})
     setSubtasks([])
     setNewSubtaskInput('')
     setFormError(null)
@@ -218,18 +229,23 @@ export const AdminTasksPage: React.FC = () => {
     setReviewFilter('all')
     setReviewSearch('')
 
-    const res = await fetchTaskSubmissions(task.id)
-    if (res.data) {
-      setSubmissions(res.data)
-      const initialFeedback: Record<string, string> = {}
-      res.data.forEach((sub) => {
-        if (sub.feedback) {
-          initialFeedback[sub.id] = sub.feedback
-        }
-      })
-      setReviewFeedback(initialFeedback)
+    try {
+      const res = await fetchTaskSubmissions(task.id)
+      if (res.data) {
+        setSubmissions(res.data)
+        const initialFeedback: Record<string, string> = {}
+        res.data.forEach((sub) => {
+          if (sub.feedback) {
+            initialFeedback[sub.id] = sub.feedback
+          }
+        })
+        setReviewFeedback(initialFeedback)
+      }
+    } catch (err) {
+      console.warn('[AdminTasksPage] Load submissions error:', err)
+    } finally {
+      setIsLoadingSubmissions(false)
     }
-    setIsLoadingSubmissions(false)
   }
 
   const handleReview = async (assignmentId: string, status: 'approved' | 'rejected') => {
@@ -471,23 +487,26 @@ export const AdminTasksPage: React.FC = () => {
       {/* ===================================================================== */}
       {/* Modal: Create Task with Subtasks */}
       {/* ===================================================================== */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <ClipboardList className="h-5 w-5 text-purple-600" />
-                <span>มอบหมายภาระงานโรงเรียนใหม่</span>
-              </h2>
-              <button
-                onClick={() => setIsCreateModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+      {isCreateModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
+            <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-150 overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 shrink-0 bg-white">
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5 text-purple-600" />
+                  <span>มอบหมายภาระงานโรงเรียนใหม่</span>
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
 
-            <form onSubmit={handleCreateSubmit} className="space-y-4">
+              <form onSubmit={handleCreateSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                <div className="p-6 overflow-y-auto flex-1 min-h-0 space-y-4">
               {formError && (
                 <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
                   <AlertCircle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
@@ -808,80 +827,87 @@ export const AdminTasksPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 cursor-pointer transition-colors"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>กำลังบันทึก...</span>
-                    </>
-                  ) : (
-                    <span>ยืนยันมอบหมายงาน</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                </div>
+
+                <div className="flex items-center justify-end gap-3 px-6 py-3.5 border-t border-slate-200 bg-slate-50 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 cursor-pointer transition-colors"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>กำลังบันทึก...</span>
+                      </>
+                    ) : (
+                      <span>ยืนยันมอบหมายงาน</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* ===================================================================== */}
       {/* Modal: Review Task Submissions & Checklist (Fix #9) */}
       {/* ===================================================================== */}
-      {isReviewModalOpen && activeTaskForReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-4 mb-4 gap-3">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                  <span>Checklist & ตรวจรับผลงานภาระงาน</span>
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">{activeTaskForReview.title}</p>
+      {isReviewModalOpen && activeTaskForReview &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
+            <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-150 overflow-hidden">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 px-6 py-4 gap-3 shrink-0 bg-white">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                    <span>Checklist & ตรวจรับผลงานภาระงาน</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">{activeTaskForReview.title}</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPrintSummaryOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="พิมพ์รายงานสรุปผลการส่งงานทางการ"
+                  >
+                    <Printer className="h-3.5 w-3.5 text-blue-600" />
+                    <span>พิมพ์รายงาน A4</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => exportTaskSubmissionsToCSV(activeTaskForReview.title, submissions)}
+                    disabled={submissions.length === 0}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer disabled:opacity-40"
+                    title="ดาวน์โหลดรายงานสรุปการส่งงานเป็นไฟล์ Excel CSV"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>ส่งออก CSV (Excel)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsReviewModalOpen(false)}
+                    className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsPrintSummaryOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                  title="พิมพ์รายงานสรุปผลการส่งงานทางการ"
-                >
-                  <Printer className="h-3.5 w-3.5 text-blue-600" />
-                  <span>พิมพ์รายงาน A4</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => exportTaskSubmissionsToCSV(activeTaskForReview.title, submissions)}
-                  disabled={submissions.length === 0}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer disabled:opacity-40"
-                  title="ดาวน์โหลดรายงานสรุปการส่งงานเป็นไฟล์ Excel CSV"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span>ส่งออก CSV (Excel)</span>
-                </button>
-
-                <button
-                  onClick={() => setIsReviewModalOpen(false)}
-                  className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
+              {/* Scrollable Content Body */}
+              <div className="p-6 overflow-y-auto flex-1 min-h-0 space-y-4">
 
             {/* Checklist Statistics Overview Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 text-center">
@@ -1096,15 +1122,29 @@ export const AdminTasksPage: React.FC = () => {
                 })}
               </div>
             )}
-          </div>
-        </div>
-      )}
+              </div>
+
+              {/* Pinned Bottom Close */}
+              <div className="flex items-center justify-end px-6 py-3 border-t border-slate-200 bg-slate-50 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsReviewModalOpen(false)}
+                  className="rounded-xl border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer shadow-2xs transition-colors"
+                >
+                  ปิดหน้าต่าง
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* ===================================================================== */}
       {/* Modal: Printable Task Summary Report (A4) */}
       {/* ===================================================================== */}
-      {isPrintSummaryOpen && activeTaskForReview && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs p-3 sm:p-6 flex justify-center items-start animate-in fade-in duration-150">
+      {isPrintSummaryOpen && activeTaskForReview &&
+        createPortal(
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs p-3 sm:p-6 flex justify-center items-start animate-in fade-in duration-150">
           <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden my-4 sm:my-8">
             {/* Action Bar */}
             <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 px-6 py-3.5 bg-white/95 backdrop-blur-md shadow-xs print:hidden">
@@ -1247,7 +1287,8 @@ export const AdminTasksPage: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

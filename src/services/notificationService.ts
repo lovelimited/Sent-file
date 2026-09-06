@@ -150,8 +150,9 @@ export function subscribeToUserNotifications(
   userId: string,
   onNewNotification: (notif: AppNotification) => void
 ) {
+  const channelName = `user-notifications-${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
   const channel = supabase
-    .channel(`user-notifications-${userId}`)
+    .channel(channelName)
     .on(
       'postgres_changes',
       {
