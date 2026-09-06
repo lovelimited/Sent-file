@@ -67,6 +67,45 @@ export const showError = async (title: string, text?: string): Promise<void> => 
   })
 }
 
+export const showPrompt = async (
+  title: string,
+  inputPlaceholder: string,
+  inputValue = '',
+  confirmButtonText = 'บันทึก',
+  cancelButtonText = 'ยกเลิก'
+): Promise<string | null> => {
+  const result = await Swal.fire({
+    title,
+    input: 'text',
+    inputValue,
+    inputPlaceholder,
+    showCancelButton: true,
+    confirmButtonColor: '#059669',
+    cancelButtonColor: '#94a3b8',
+    confirmButtonText,
+    cancelButtonText,
+    reverseButtons: true,
+    inputValidator: (value) => {
+      if (!value || !value.trim()) {
+        return 'กรุณากรอกข้อความ'
+      }
+      return null
+    },
+    customClass: {
+      popup: 'rounded-2xl border border-slate-200 shadow-2xl font-sans',
+      title: 'text-slate-900 font-bold text-lg',
+      input: 'rounded-xl border border-slate-300 text-sm px-3.5 py-2 text-slate-800 focus:border-emerald-500 focus:outline-none',
+      confirmButton: 'rounded-xl px-5 py-2.5 font-semibold text-sm shadow-sm transition-all',
+      cancelButton: 'rounded-xl px-4 py-2.5 font-medium text-sm transition-all',
+    },
+  })
+
+  if (result.isConfirmed && typeof result.value === 'string') {
+    return result.value.trim()
+  }
+  return null
+}
+
 export const showToast = (
   title: string,
   icon: 'success' | 'error' | 'warning' | 'info' = 'success'

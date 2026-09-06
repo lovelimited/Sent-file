@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   MessageSquare,
@@ -39,7 +39,6 @@ export const FloatingChatDock: React.FC = () => {
   const [, setLastMessageMap] = useState<Record<string, string>>({})
   const [activeChannel, setActiveChannel] = useState<ChatChannelWithGroup | null>(null)
   const [messages, setMessages] = useState<ChatMessageWithSender[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
   const [unreadMap, setUnreadMap] = useState<Record<string, number>>({})
   const [newMessage, setNewMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -49,6 +48,21 @@ export const FloatingChatDock: React.FC = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatScrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // References to keep realtime incoming subscription stable and prevent channel recreation on state updates
+  const activeChannelRef = useRef(activeChannel)
+  activeChannelRef.current = activeChannel
+  const isOpenRef = useRef(isOpen)
+  isOpenRef.current = isOpen
+
+  // Total unread count derived directly from unreadMap
+  const totalUnreadCount = useMemo(() => {
+    return Object.entries(unreadMap).reduce((acc, [chId, count]) => {
+      // If dock is currently open and this channel is currently active, it is read
+      if (isOpen && activeChannel?.id === chId) return acc
+      return acc + (count || 0)
+    }, 0)
+  }, [unreadMap, isOpen, activeChannel?.id])
 
   // Web Audio Synthesizer bell
   const playChime = useCallback(() => {
@@ -74,6 +88,9 @@ export const FloatingChatDock: React.FC = () => {
     }
   }, [soundEnabled])
 
+  const playChimeRef = useRef(playChime)
+  playChimeRef.current = playChime
+
   // Scroll container strictly without moving window
   const scrollToBottom = () => {
     if (chatScrollContainerRef.current) {
@@ -83,23 +100,33 @@ export const FloatingChatDock: React.FC = () => {
 
   // Check unreads
   const refreshUnreads = useCallback(async (channelList: ChatChannelWithGroup[]) => {
-    let total = 0
+    if (!user?.id) return
     const map: Record<string, number> = {}
     for (const ch of channelList) {
-      const lastRead = localStorage.getItem(`chat_last_read_${ch.id}`)
-      let q = supabase
+      if (isOpenRef.current && activeChannelRef.current?.id === ch.id) {
+        map[ch.id] = 0
+        localStorage.setItem(`chat_last_read_${ch.id}`, new Date().toISOString())
+        continue
+      }
+
+      let lastRead = localStorage.getItem(`chat_last_read_${ch.id}`)
+      if (!lastRead) {
+        // Baseline to now if never recorded, so past historical messages don't falsely badge
+        lastRead = new Date().toISOString()
+        localStorage.setItem(`chat_last_read_${ch.id}`, lastRead)
+      }
+
+      const { count } = await supabase
         .from('chat_messages')
         .select('id', { count: 'exact', head: true })
         .eq('channel_id', ch.id)
-      if (lastRead) q = q.gt('created_at', lastRead)
-      const { count } = await q
-      const c = count || 0
-      map[ch.id] = c
-      total += c
+        .gt('created_at', lastRead)
+        .neq('sender_id', user.id)
+
+      map[ch.id] = count || 0
     }
     setUnreadMap(map)
-    setUnreadCount(total)
-  }, [])
+  }, [user?.id])
 
   // Load channels with latest active sorting (Requirement 5)
   useEffect(() => {
@@ -146,6 +173,7 @@ export const FloatingChatDock: React.FC = () => {
         if (isMounted && res.data) {
           setMessages(res.data)
           localStorage.setItem(`chat_last_read_${activeChannel.id}`, new Date().toISOString())
+          setUnreadMap((prev) => ({ ...prev, [activeChannel.id]: 0 }))
           setTimeout(scrollToBottom, 50)
         }
       })
@@ -156,14 +184,6 @@ export const FloatingChatDock: React.FC = () => {
       unsubscribe()
     }
   }, [activeChannel, isOpen])
-
-  // References to keep realtime incoming subscription stable and prevent channel recreation on state updates
-  const activeChannelRef = useRef(activeChannel)
-  activeChannelRef.current = activeChannel
-  const isOpenRef = useRef(isOpen)
-  isOpenRef.current = isOpen
-  const playChimeRef = useRef(playChime)
-  playChimeRef.current = playChime
 
   // Global realtime incoming message detector for dock & dynamic sorting (Requirement 5)
   useEffect(() => {
@@ -202,13 +222,13 @@ export const FloatingChatDock: React.FC = () => {
             return prevChannels
           })
 
-          // If docked and chatting in this channel, append
+          // If docked and chatting in this channel, mark as read
           if (isOpenRef.current && activeChannelRef.current?.id === newMsg.channel_id) {
             localStorage.setItem(`chat_last_read_${newMsg.channel_id}`, new Date().toISOString())
+            setUnreadMap((prev) => ({ ...prev, [newMsg.channel_id]: 0 }))
           } else {
-            // Increment unread count
+            // Increment unread count for this specific channel
             setUnreadMap((prev) => ({ ...prev, [newMsg.channel_id]: (prev[newMsg.channel_id] || 0) + 1 }))
-            setUnreadCount((prev) => prev + 1)
           }
         }
       )
@@ -464,7 +484,6 @@ export const FloatingChatDock: React.FC = () => {
             if (activeChannel) {
               localStorage.setItem(`chat_last_read_${activeChannel.id}`, new Date().toISOString())
               setUnreadMap((prev) => ({ ...prev, [activeChannel.id]: 0 }))
-              setUnreadCount(0)
             }
           }}
           className="group flex items-center gap-2.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white pl-3.5 pr-4 py-2.5 shadow-xl shadow-purple-600/30 hover:from-purple-500 hover:to-indigo-500 transition-all cursor-pointer border-2 border-white hover:scale-105"
@@ -482,9 +501,9 @@ export const FloatingChatDock: React.FC = () => {
             ห้องสื่อสาร
           </span>
 
-          {unreadCount > 0 && (
+          {totalUnreadCount > 0 && (
             <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-xs">
-              {unreadCount > 99 ? '99+' : unreadCount}
+              {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
             </span>
           )}
         </button>

@@ -64,26 +64,36 @@ export const ChatPage: React.FC = () => {
   }, [])
 
   // Check unread count for channels
-  const checkUnreads = useCallback(async (channelList: ChatChannelWithGroup[]) => {
+  const checkUnreads = useCallback(async (channelList: ChatChannelWithGroup[], currentActiveId?: string) => {
+    if (!user?.id) return
+    const activeId = currentActiveId || activeChannel?.id
     const unreads: Record<string, number> = {}
 
     for (const ch of channelList) {
-      const lastRead = localStorage.getItem(`chat_last_read_${ch.id}`)
-      let query = supabase
+      if (activeId === ch.id) {
+        unreads[ch.id] = 0
+        localStorage.setItem(`chat_last_read_${ch.id}`, new Date().toISOString())
+        continue
+      }
+
+      let lastRead = localStorage.getItem(`chat_last_read_${ch.id}`)
+      if (!lastRead) {
+        lastRead = new Date().toISOString()
+        localStorage.setItem(`chat_last_read_${ch.id}`, lastRead)
+      }
+
+      const { count } = await supabase
         .from('chat_messages')
         .select('id', { count: 'exact', head: true })
         .eq('channel_id', ch.id)
+        .gt('created_at', lastRead)
+        .neq('sender_id', user.id)
 
-      if (lastRead) {
-        query = query.gt('created_at', lastRead)
-      }
-
-      const { count } = await query
       unreads[ch.id] = count || 0
     }
 
     setUnreadMap(unreads)
-  }, [])
+  }, [user?.id, activeChannel?.id])
 
   // Load channels on mount with latest chat sorting (Requirement 5)
   useEffect(() => {
@@ -107,7 +117,7 @@ export const ChatPage: React.FC = () => {
 
         setActiveChannel(initial)
         markChannelAsRead(initial.id)
-        checkUnreads(sorted)
+        checkUnreads(sorted, initial.id)
       }
       if (isMounted) setIsLoadingChannels(false)
     })
@@ -366,7 +376,7 @@ export const ChatPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <p className="font-semibold truncate">{ch.name}</p>
-                      {unreadCount > 0 && (
+                      {unreadCount > 0 && !isActive && (
                         <span className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-red-600 text-white font-bold px-2 py-0.2 text-[10px] animate-pulse">
                           <Bell className="h-2.5 w-2.5" />
                           <span>{unreadCount > 9 ? '9+' : unreadCount}</span>

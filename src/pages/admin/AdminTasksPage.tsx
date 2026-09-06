@@ -35,6 +35,7 @@ import {
 } from '@/services/taskService'
 import { exportTaskSubmissionsToCSV } from '@/utils/exportUtils'
 import { getMasterDriveUrl } from '@/services/driveService'
+import { showConfirm, showSuccess, showError } from '@/utils/sweetalert'
 
 export const AdminTasksPage: React.FC = () => {
   const { user } = useAuth()
@@ -155,39 +156,45 @@ export const AdminTasksPage: React.FC = () => {
     setFormError(null)
 
     if (!title.trim()) {
+      showError('กรุณากรอกหัวข้อภาระงาน')
       setFormError('กรุณากรอกหัวข้อภาระงาน')
       return
     }
 
     if (assignedRole === 'group' && !targetGroupId) {
-      setFormError('กรุณาเลือกกลุ่มสาระการเรียนรู้ที่ต้องการมอบหมาย หรือเลือกส่งทุกกลุ่ม')
-      return
+      setTargetGroupId('all_groups')
     }
 
     if (assignedRole === 'specific' && selectedTeacherIds.length === 0) {
+      showError('กรุณาเลือกคุณครูอย่างน้อย 1 ท่าน')
       setFormError('กรุณาเลือกคุณครูอย่างน้อย 1 ท่าน')
       return
     }
 
-    // Confirmation dialog (ข้อ 5)
+    // Confirmation dialog via SweetAlert2 (no browser alert blocking)
+    const effectiveTargetGroupId = assignedRole === 'group' && !targetGroupId ? 'all_groups' : targetGroupId
     const targetLabel =
-      assignedRole === 'all' || targetGroupId === 'all_groups'
+      assignedRole === 'all' || effectiveTargetGroupId === 'all_groups'
         ? 'ครูทุกคน (ทั้งโรงเรียน)'
         : assignedRole === 'group'
-        ? `กลุ่มสาระฯ: ${groups.find((g) => g.id === targetGroupId)?.name || 'ที่เลือก'}`
+        ? `กลุ่มสาระฯ: ${groups.find((g) => g.id === effectiveTargetGroupId)?.name || 'ที่เลือก'}`
         : `คุณครู ${selectedTeacherIds.length} ท่าน`
 
-    if (!window.confirm(`ยืนยันการมอบหมายภาระงาน?\n\nหัวข้องาน: "${title}"\nเป้าหมาย: ${targetLabel}`)) {
-      return
-    }
+    const confirmed = await showConfirm(
+      'ยืนยันการมอบหมายภาระงาน?',
+      `หัวข้องาน: "${title.trim()}"\nเป้าหมาย: ${targetLabel}`,
+      'ยืนยันมอบหมาย',
+      'ยกเลิก'
+    )
+    if (!confirmed) return
 
-    const effectiveRole = assignedRole === 'group' && targetGroupId === 'all_groups' ? 'all' : assignedRole
-    const effectiveGroupId = targetGroupId === 'all_groups' ? null : targetGroupId
+    const effectiveRole = assignedRole === 'group' && effectiveTargetGroupId === 'all_groups' ? 'all' : assignedRole
+    const effectiveGroupId = effectiveTargetGroupId === 'all_groups' ? null : effectiveTargetGroupId
 
     setIsSubmitting(true)
     const res = await createTask({
-      title,
-      description,
+      title: title.trim(),
+      description: description.trim() || undefined,
       assigned_to_role: effectiveRole,
       target_group_id: effectiveRole === 'group' ? effectiveGroupId : null,
       specific_teacher_ids: effectiveRole === 'specific' ? selectedTeacherIds : undefined,
@@ -202,23 +209,31 @@ export const AdminTasksPage: React.FC = () => {
 
     if (res.success) {
       setIsCreateModalOpen(false)
-      setFeedback({ type: 'success', message: `มอบหมายงาน "${title}" เรียบร้อยแล้ว` })
+      await showSuccess('มอบหมายงานสำเร็จ', `มอบหมายงาน "${title.trim()}" เรียบร้อยแล้ว`)
       loadTasks()
     } else {
+      showError('ไม่สามารถมอบหมายงานได้', res.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล')
       setFormError(res.error || 'เกิดข้อผิดพลาดในการมอบหมายงาน')
     }
   }
 
   const handleDeleteTask = async (task: AdminTaskItem) => {
-    if (!window.confirm(`คุณแน่ใจว่าต้องการลบภาระงาน "${task.title}" ใช่หรือไม่?`)) return
     if (!user?.id) return
+    const confirmed = await showConfirm(
+      'ยืนยันการลบภาระงาน?',
+      `คุณแน่ใจว่าต้องการลบภาระงาน "${task.title}" ใช่หรือไม่? ข้อมูลการส่งงานของครูทั้งหมดในภาระงานนี้จะถูกลบด้วย`,
+      'ลบภาระงาน',
+      'ยกเลิก',
+      true
+    )
+    if (!confirmed) return
 
     const res = await deleteTask(task.id, user.id)
     if (res.success) {
-      setFeedback({ type: 'success', message: `ลบภาระงาน "${task.title}" เรียบร้อยแล้ว` })
+      await showSuccess('ลบภาระงานสำเร็จ', `ลบภาระงาน "${task.title}" เรียบร้อยแล้ว`)
       loadTasks()
     } else {
-      setFeedback({ type: 'error', message: res.error || 'ไม่สามารถลบภาระงานได้' })
+      await showError('ไม่สามารถลบภาระงานได้', res.error || 'เกิดข้อผิดพลาดในการลบงาน')
     }
   }
 
@@ -743,57 +758,25 @@ export const AdminTasksPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Category & Dedicated Google Drive Task Folder (ข้อ 8) */}
-              <div className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/40 p-3.5">
-                <div>
-                  <label className="block text-xs font-bold text-emerald-950 mb-1">
-                    ประเภทหมวดหมู่งาน (สอดคล้องกับคลังไฟล์ & ทรัพยากรโรงเรียน) <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={taskCategory}
-                    onChange={(e) => setTaskCategory(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 focus:border-emerald-600 focus:outline-none"
-                  >
-                    <option value="แผนการจัดการเรียนรู้">แผนการจัดการเรียนรู้ (Lesson Plans)</option>
-                    <option value="รายงานผลการปฏิบัติงาน (PA)">รายงานผลการปฏิบัติงาน (PA)</option>
-                    <option value="วิจัยในชั้นเรียนและนวัตกรรม">วิจัยในชั้นเรียนและนวัตกรรม</option>
-                    <option value="เอกสารวัดผลและวิชาการ">เอกสารวัดผลและวิชาการ</option>
-                    <option value="เกียรติบัตรและผลงาน">เกียรติบัตรและผลงาน</option>
-                    <option value="แบบฟอร์มโรงเรียน">แบบฟอร์มโรงเรียน</option>
-                    <option value="งานธุรการและบริหารทั่วไป">งานธุรการและบริหารทั่วไป</option>
-                    <option value="ภาระงานทั่วไป">ภาระงานทั่วไป</option>
-                  </select>
-                  <p className="mt-1 text-[11px] text-emerald-800">
-                    เลือกหมวดหมู่เพื่อให้งานนี้และไฟล์ที่ครูส่งถูกจัดเก็บและเชื่อมโยงเข้าคลังทรัพยากรโรงเรียนอย่างเป็นระเบียบ
-                  </p>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-slate-800">
-                      โฟลเดอร์ Google Drive ประจำภาระงาน (สร้างโฟลเดอร์แยกงาน)
-                    </label>
-                    <a
-                      href={masterDriveUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline inline-flex items-center gap-1"
-                    >
-                      <FolderOpen className="h-3 w-3 text-emerald-600" />
-                      <span>เปิด Google Drive กลาง เพื่อสร้างโฟลเดอร์แยกหมวด ↗</span>
-                    </a>
-                  </div>
-                  <input
-                    type="url"
-                    value={driveFolderUrl}
-                    onChange={(e) => setDriveFolderUrl(e.target.value)}
-                    placeholder={masterDriveUrl || "https://drive.google.com/drive/folders/..."}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 focus:border-emerald-600 focus:outline-none"
-                  />
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    ครูจะได้รับปุ่มเปิดโฟลเดอร์นี้ในหน้าภาระงาน เพื่ออัปโหลดและส่งงานในโฟลเดอร์ของภาระงานนี้โดยตรง
-                  </p>
-                </div>
+              {/* Category */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  ประเภทหมวดหมู่งาน
+                </label>
+                <select
+                  value={taskCategory}
+                  onChange={(e) => setTaskCategory(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-900 focus:bg-white focus:border-blue-600 focus:outline-none"
+                >
+                  <option value="แผนการจัดการเรียนรู้">แผนการจัดการเรียนรู้ (Lesson Plans)</option>
+                  <option value="รายงานผลการปฏิบัติงาน (PA)">รายงานผลการปฏิบัติงาน (PA)</option>
+                  <option value="วิจัยในชั้นเรียนและนวัตกรรม">วิจัยในชั้นเรียนและนวัตกรรม</option>
+                  <option value="เอกสารวัดผลและวิชาการ">เอกสารวัดผลและวิชาการ</option>
+                  <option value="เกียรติบัตรและผลงาน">เกียรติบัตรและผลงาน</option>
+                  <option value="แบบฟอร์มโรงเรียน">แบบฟอร์มโรงเรียน</option>
+                  <option value="งานธุรการและบริหารทั่วไป">งานธุรการและบริหารทั่วไป</option>
+                  <option value="ภาระงานทั่วไป">ภาระงานทั่วไป</option>
+                </select>
               </div>
 
               {/* Due Date and Priority */}

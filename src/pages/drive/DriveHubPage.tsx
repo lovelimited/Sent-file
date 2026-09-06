@@ -20,6 +20,7 @@ import {
   File,
   X,
   Settings,
+  PenLine,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import type { UserGroup } from '@/types/index'
@@ -31,7 +32,7 @@ import {
   type DriveResourceWithGroup,
 } from '@/services/driveService'
 import { supabase } from '@/services/supabase'
-import { showConfirm, showToast, showError } from '@/utils/sweetalert'
+import { showConfirm, showToast, showError, showPrompt } from '@/utils/sweetalert'
 
 const PRESET_CATEGORIES = [
   { id: 'lesson_plan', name: 'แผนการจัดการเรียนรู้' },
@@ -56,7 +57,7 @@ export const DriveHubPage: React.FC = () => {
   const [addMode, setAddMode] = useState<'upload' | 'link'>('upload')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [categorySelection, setCategorySelection] = useState<string>('lesson_plan')
+  const [categorySelection, setCategorySelection] = useState<string>('แผนการจัดการเรียนรู้')
   const [customCategoryName, setCustomCategoryName] = useState<string>('')
   const [url, setUrl] = useState('')
   const [targetGroupId, setTargetGroupId] = useState('')
@@ -73,6 +74,14 @@ export const DriveHubPage: React.FC = () => {
       return []
     }
   })
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('school_custom_categories')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
   const [isManageCategoryModalOpen, setIsManageCategoryModalOpen] = useState(false)
 
   const loadData = useCallback(() => {
@@ -83,21 +92,33 @@ export const DriveHubPage: React.FC = () => {
       setIsLoading(false)
     })
 
-    // Load deleted categories from system_settings
+    // Load deleted & custom categories from system_settings
     supabase
       .from('system_settings')
-      .select('value')
-      .eq('key', 'deleted_drive_categories')
-      .maybeSingle()
+      .select('key, value')
+      .in('key', ['deleted_drive_categories', 'custom_drive_categories'])
       .then((res) => {
-        if (res.data?.value) {
-          try {
-            const parsed = JSON.parse(res.data.value)
-            if (Array.isArray(parsed)) {
-              setDeletedCategories(parsed)
-              localStorage.setItem('school_deleted_categories', JSON.stringify(parsed))
+        if (res.data) {
+          res.data.forEach((row) => {
+            if (row.key === 'deleted_drive_categories' && row.value) {
+              try {
+                const parsed = JSON.parse(row.value)
+                if (Array.isArray(parsed)) {
+                  setDeletedCategories(parsed)
+                  localStorage.setItem('school_deleted_categories', JSON.stringify(parsed))
+                }
+              } catch {}
             }
-          } catch {}
+            if (row.key === 'custom_drive_categories' && row.value) {
+              try {
+                const parsed = JSON.parse(row.value)
+                if (Array.isArray(parsed)) {
+                  setCustomCategories(parsed)
+                  localStorage.setItem('school_custom_categories', JSON.stringify(parsed))
+                }
+              } catch {}
+            }
+          })
         }
       })
   }, [user?.id, isAdmin])
@@ -106,23 +127,91 @@ export const DriveHubPage: React.FC = () => {
     loadData()
   }, [loadData])
 
-  // Extract all unique categories dynamically (ข้อ 1 & ข้อ 3: คัดประเภทที่ถูกลบออก)
+  // Extract all unique categories dynamically
   const allCategories = useMemo(() => {
     const set = new Set<string>()
-    // Add default presets that are not deleted
+    // 1. Default presets that are not deleted
     PRESET_CATEGORIES.forEach((p) => {
       if (!deletedCategories.includes(p.name)) {
         set.add(p.name)
       }
     })
-    // Add from existing items that are not deleted
+    // 2. Custom categories that are not deleted
+    customCategories.forEach((c) => {
+      if (!deletedCategories.includes(c)) {
+        set.add(c)
+      }
+    })
+    // 3. Existing items that are not deleted
     resources.forEach((r) => {
       if (r.category && !deletedCategories.includes(r.category)) {
         set.add(r.category)
       }
     })
     return Array.from(set)
-  }, [resources, deletedCategories])
+  }, [resources, deletedCategories, customCategories])
+
+  const handleEditCategory = async (oldName: string) => {
+    const newName = await showPrompt(
+      'แก้ไขชื่อประเภททรัพยากร',
+      'กรุณาระบุชื่อประเภทใหม่',
+      oldName,
+      'บันทึกชื่อใหม่'
+    )
+    if (!newName || newName === oldName) return
+
+    const trimmed = newName.trim()
+    // 1. Update database resources with this category
+    const { error: updateErr } = await supabase
+      .from('drive_resources')
+      .update({ category: trimmed })
+      .eq('category', oldName)
+
+    if (updateErr) {
+      showError('ไม่สามารถแก้ไขชื่อประเภทได้', updateErr.message)
+      return
+    }
+
+    // 2. If oldName was preset, mark old preset as deleted so it doesn't revert
+    const isPreset = PRESET_CATEGORIES.some((p) => p.name === oldName)
+    let nextDeleted = [...deletedCategories]
+    if (isPreset && !deletedCategories.includes(oldName)) {
+      nextDeleted = [...deletedCategories, oldName]
+      setDeletedCategories(nextDeleted)
+      localStorage.setItem('school_deleted_categories', JSON.stringify(nextDeleted))
+      await supabase.from('system_settings').upsert({
+        key: 'deleted_drive_categories',
+        value: JSON.stringify(nextDeleted),
+        updated_at: new Date().toISOString(),
+        updated_by: user?.id,
+      })
+    }
+
+    // 3. Add newName to customCategories and remove oldName if existed
+    let nextCustom = customCategories.filter((c) => c !== oldName)
+    if (!nextCustom.includes(trimmed)) {
+      nextCustom.push(trimmed)
+    }
+    setCustomCategories(nextCustom)
+    localStorage.setItem('school_custom_categories', JSON.stringify(nextCustom))
+    await supabase.from('system_settings').upsert({
+      key: 'custom_drive_categories',
+      value: JSON.stringify(nextCustom),
+      updated_at: new Date().toISOString(),
+      updated_by: user?.id,
+    })
+
+    // 4. Update UI states
+    if (activeCategory === oldName) {
+      setActiveCategory(trimmed)
+    }
+    if (categorySelection === oldName) {
+      setCategorySelection(trimmed)
+    }
+
+    showToast(`เปลี่ยนชื่อประเภทเป็น "${trimmed}" เรียบร้อยแล้ว`, 'success')
+    loadData()
+  }
 
   const handleDeleteCategory = async (catName: string) => {
     const matchingCount = resources.filter((r) => r.category === catName).length
@@ -142,19 +231,34 @@ export const DriveHubPage: React.FC = () => {
       await supabase.from('drive_resources').update({ category: 'ทั่วไป' }).eq('category', catName)
     }
 
-    const updated = Array.from(new Set([...deletedCategories, catName]))
-    setDeletedCategories(updated)
-    localStorage.setItem('school_deleted_categories', JSON.stringify(updated))
+    const updatedDeleted = Array.from(new Set([...deletedCategories, catName]))
+    setDeletedCategories(updatedDeleted)
+    localStorage.setItem('school_deleted_categories', JSON.stringify(updatedDeleted))
 
-    await supabase.from('system_settings').upsert({
-      key: 'deleted_drive_categories',
-      value: JSON.stringify(updated),
-      updated_at: new Date().toISOString(),
-      updated_by: user?.id,
-    })
+    const updatedCustom = customCategories.filter((c) => c !== catName)
+    setCustomCategories(updatedCustom)
+    localStorage.setItem('school_custom_categories', JSON.stringify(updatedCustom))
+
+    await Promise.all([
+      supabase.from('system_settings').upsert({
+        key: 'deleted_drive_categories',
+        value: JSON.stringify(updatedDeleted),
+        updated_at: new Date().toISOString(),
+        updated_by: user?.id,
+      }),
+      supabase.from('system_settings').upsert({
+        key: 'custom_drive_categories',
+        value: JSON.stringify(updatedCustom),
+        updated_at: new Date().toISOString(),
+        updated_by: user?.id,
+      }),
+    ])
 
     if (activeCategory === catName) {
       setActiveCategory('all')
+    }
+    if (categorySelection === catName) {
+      setCategorySelection(allCategories.find((c) => c !== catName) || 'ทั่วไป')
     }
 
     showToast(`ลบประเภท "${catName}" เรียบร้อยแล้ว`, 'success')
@@ -179,7 +283,7 @@ export const DriveHubPage: React.FC = () => {
   const handleOpenAddModal = () => {
     setTitle('')
     setDescription('')
-    setCategorySelection('lesson_plan')
+    setCategorySelection(allCategories[0] || 'แผนการจัดการเรียนรู้')
     setCustomCategoryName('')
     setUrl('')
     setFileToUpload(null)
@@ -220,7 +324,7 @@ export const DriveHubPage: React.FC = () => {
       return
     }
 
-    // Determine final category (ข้อ 1)
+    // Determine final category
     let finalCategory = categorySelection
     if (categorySelection === 'custom') {
       if (!customCategoryName.trim()) {
@@ -228,9 +332,20 @@ export const DriveHubPage: React.FC = () => {
         return
       }
       finalCategory = customCategoryName.trim()
-    } else {
-      const found = PRESET_CATEGORIES.find((p) => p.id === categorySelection)
-      if (found) finalCategory = found.name
+      if (!customCategories.includes(finalCategory)) {
+        const nextCustom = [...customCategories, finalCategory]
+        setCustomCategories(nextCustom)
+        localStorage.setItem('school_custom_categories', JSON.stringify(nextCustom))
+        supabase
+          .from('system_settings')
+          .upsert({
+            key: 'custom_drive_categories',
+            value: JSON.stringify(nextCustom),
+            updated_at: new Date().toISOString(),
+            updated_by: user?.id,
+          })
+          .then()
+      }
     }
 
     let finalUrl = url.trim()
@@ -482,18 +597,16 @@ export const DriveHubPage: React.FC = () => {
             </button>
           ))}
 
-          {/* Manage Categories Button (Admin only - ข้อ 3) */}
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setIsManageCategoryModalOpen(true)}
-              title="จัดการ / ลบประเภททรัพยากรที่ไม่ต้องการ"
-              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 hover:text-emerald-800 hover:bg-emerald-50 transition-colors border border-dashed border-slate-300 shrink-0 cursor-pointer ml-1"
-            >
-              <Settings className="h-3 w-3 text-slate-500" />
-              <span>จัดการประเภท</span>
-            </button>
-          )}
+          {/* Manage Categories Button */}
+          <button
+            type="button"
+            onClick={() => setIsManageCategoryModalOpen(true)}
+            title="จัดการ / แก้ไข / ลบประเภททรัพยากร"
+            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors border border-dashed border-slate-300 shrink-0 cursor-pointer ml-1"
+          >
+            <Settings className="h-3 w-3 text-slate-500" />
+            <span>จัดการประเภท</span>
+          </button>
         </div>
       </div>
 
@@ -784,25 +897,62 @@ export const DriveHubPage: React.FC = () => {
                 />
               </div>
 
-              {/* Category (ข้อ 1: ให้เพิ่มเองได้) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    ประเภททรัพยากร
+              {/* Category & Quick Manage (ข้อ 2: แก้ไข/ลบประเภทได้) */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                  <label className="block text-xs font-medium text-slate-700">
+                    ประเภททรัพยากร <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={categorySelection}
-                    onChange={(e) => setCategorySelection(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:bg-white focus:border-emerald-500 focus:outline-none"
-                  >
-                    {PRESET_CATEGORIES.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                    <option value="custom">➕ เพิ่มประเภทใหม่เอง...</option>
-                  </select>
+                  <div className="flex items-center gap-1.5">
+                    {categorySelection !== 'custom' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleEditCategory(categorySelection)}
+                          title="แก้ไขชื่อประเภทที่เลือก"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-emerald-200"
+                        >
+                          <PenLine className="h-3 w-3" />
+                          <span>แก้ไขประเภท</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCategory(categorySelection)}
+                          title="ลบประเภทที่เลือก"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-red-200"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span>ลบประเภท</span>
+                        </button>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsManageCategoryModalOpen(true)}
+                      title="เปิดหน้าต่างจัดการประเภททั้งหมด"
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-slate-200"
+                    >
+                      <Settings className="h-3 w-3" />
+                      <span>จัดการทั้งหมด</span>
+                    </button>
+                  </div>
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <select
+                      value={categorySelection}
+                      onChange={(e) => setCategorySelection(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:bg-white focus:border-emerald-500 focus:outline-none"
+                    >
+                      {allCategories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                      <option value="custom">➕ เพิ่มประเภทใหม่เอง...</option>
+                    </select>
+                  </div>
 
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -822,6 +972,7 @@ export const DriveHubPage: React.FC = () => {
                   </select>
                 </div>
               </div>
+            </div>
 
               {/* Custom Category input field if selected (ข้อ 1) */}
               {categorySelection === 'custom' && (
@@ -884,7 +1035,7 @@ export const DriveHubPage: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">จัดการประเภททรัพยากร</h3>
-                  <p className="text-[11px] text-slate-500">สามารถกดลบประเภทที่ไม่ต้องการใช้งานออกได้</p>
+                  <p className="text-[11px] text-slate-500">สามารถแก้ไขชื่อประเภท หรือลบประเภทที่ไม่ต้องการใช้งานออกได้</p>
                 </div>
               </div>
               <button
@@ -911,14 +1062,24 @@ export const DriveHubPage: React.FC = () => {
                         <p className="text-xs font-semibold text-slate-800">{catName}</p>
                         <p className="text-[10px] text-slate-400">มีไฟล์ในหมวดนี้ {count} รายการ</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCategory(catName)}
-                        title={`ลบประเภท "${catName}"`}
-                        className="p-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleEditCategory(catName)}
+                          title={`แก้ไขชื่อประเภท "${catName}"`}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-emerald-700 transition-colors cursor-pointer"
+                        >
+                          <PenLine className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCategory(catName)}
+                          title={`ลบประเภท "${catName}"`}
+                          className="p-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                   )
                 })

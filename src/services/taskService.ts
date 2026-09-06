@@ -393,6 +393,10 @@ export async function updateTask(
  */
 export async function deleteTask(taskId: string, adminId?: string): Promise<{ success: boolean; error?: string }> {
   try {
+    // 1. Delete associated assignments first to prevent foreign key errors
+    await supabase.from('task_assignments').delete().eq('task_id', taskId)
+
+    // 2. Delete task
     const { error } = await supabase
       .from('tasks')
       .delete()
