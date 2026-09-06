@@ -58,6 +58,9 @@ export interface CreateTaskPayload {
  */
 export async function fetchTeacherTasks(teacherId: string): Promise<{ data: TeacherTaskItem[] | null; error: string | null }> {
   try {
+    // Automatically ensure newly added or unassigned open tasks are assigned to this teacher
+    await (supabase.rpc as any)('sync_user_task_assignments', { p_user_id: teacherId }).catch(() => {})
+
     const { data, error } = await supabase
       .from('task_assignments')
       .select('*, tasks(*, profiles:created_by(name, username), user_groups:target_group_id(name))')
@@ -176,23 +179,33 @@ export async function createTask(payload: CreateTaskPayload): Promise<{ success:
     let teacherIds: string[] = []
 
     if (payload.assigned_to_role === 'specific' && payload.specific_teacher_ids?.length) {
-      teacherIds = payload.specific_teacher_ids
+      // Exclude admins from specific list
+      const { data: nonAdmins } = await supabase
+        .from('profiles')
+        .select('id')
+        .in('id', payload.specific_teacher_ids)
+        .neq('role', 'admin')
+      if (nonAdmins) {
+        teacherIds = nonAdmins.map((t) => t.id)
+      }
     } else if (payload.assigned_to_role === 'group' && payload.target_group_id) {
       const { data: groupTeachers } = await supabase
         .from('profiles')
         .select('id')
         .eq('group_id', payload.target_group_id)
         .eq('active', true)
+        .neq('role', 'admin')
 
       if (groupTeachers) {
         teacherIds = groupTeachers.map((t) => t.id)
       }
     } else {
-      // All active teachers and staff
+      // All active teachers and staff (Admins are NEVER assigned tasks)
       const { data: allTeachers } = await supabase
         .from('profiles')
         .select('id')
         .eq('active', true)
+        .neq('role', 'admin')
 
       if (allTeachers) {
         teacherIds = allTeachers.map((t) => t.id)

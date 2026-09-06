@@ -16,14 +16,37 @@ export interface CreateDriveResourcePayload {
   file_type?: string | null
 }
 
+export interface SubmittedTaskFileItem {
+  id: string
+  assignment_id: string
+  task_id: string
+  task_title: string
+  task_category: string
+  teacher_id: string
+  teacher_name: string
+  teacher_username: string
+  teacher_avatar?: string | null
+  teacher_group_name?: string | null
+  status: string
+  submitted_at: string | null
+  subtask_id?: string
+  subtask_title?: string
+  file_name: string
+  file_url: string
+  file_size?: number
+  file_type?: string
+  drive_folder_url?: string
+}
+
 /**
  * Fetch drive resources:
- * Non-admins see only their own resources (created_by === userId).
+ * Non-admins see school-wide public resources, their group's resources, and their own resources.
  * Admins see all resources.
  */
 export async function fetchDriveResources(
   userId?: string,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  groupId?: string | null
 ): Promise<{
   data: DriveResourceWithGroup[] | null
   error: string | null
@@ -35,8 +58,15 @@ export async function fetchDriveResources(
       .order('category', { ascending: true })
       .order('created_at', { ascending: false })
 
-    if (!isAdmin && userId) {
-      query = query.eq('created_by', userId)
+    if (!isAdmin) {
+      // Allow teachers to access school resources
+      if (userId && groupId) {
+        query = query.or(`group_id.is.null,group_id.eq.${groupId},created_by.eq.${userId}`)
+      } else if (userId) {
+        query = query.or(`group_id.is.null,created_by.eq.${userId}`)
+      } else {
+        query = query.is('group_id', null)
+      }
     }
 
     const { data, error } = await query
@@ -48,6 +78,128 @@ export async function fetchDriveResources(
     return { data: data as DriveResourceWithGroup[], error: null }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to fetch drive resources'
+    return { data: null, error: message }
+  }
+}
+
+/**
+ * Fetch submitted task files that are stored in Google Drive
+ */
+export async function fetchTaskSubmittedDriveFiles(
+  userId?: string,
+  isAdmin?: boolean
+): Promise<{
+  data: SubmittedTaskFileItem[] | null
+  error: string | null
+}> {
+  try {
+    let query = supabase
+      .from('task_assignments')
+      .select(`
+        id,
+        task_id,
+        teacher_id,
+        status,
+        submitted_at,
+        submission_url,
+        subtask_files,
+        tasks:task_id(id, title, category, subtasks, drive_folder_url),
+        profiles:teacher_id(id, name, username, avatar_url, group_id, user_groups:group_id(name))
+      `)
+      .or('status.eq.submitted,status.eq.approved,status.eq.in_progress')
+      .order('submitted_at', { ascending: false })
+
+    if (!isAdmin && userId) {
+      query = query.eq('teacher_id', userId)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      return { data: null, error: error.message }
+    }
+
+    const items: SubmittedTaskFileItem[] = []
+
+    if (data) {
+      data.forEach((row: any) => {
+        const task = row.tasks
+        const profile = row.profiles
+        const taskTitle = task?.title || 'ภาระงานโรงเรียน'
+        const taskCategory = task?.category || 'งานทั่วไป'
+        const teacherName = profile?.name || profile?.username || 'คุณครู'
+        const teacherUsername = profile?.username || ''
+        const teacherAvatar = profile?.avatar_url || null
+        const teacherGroupName = profile?.user_groups?.name || null
+
+        // Parse subtasks map if any to get friendly subtask titles
+        const subtaskTitleMap = new Map<string, string>()
+        if (Array.isArray(task?.subtasks)) {
+          task.subtasks.forEach((st: any) => {
+            if (st && st.id) subtaskTitleMap.set(st.id, st.title)
+          })
+        }
+
+        // 1. Check subtask_files JSON
+        const subtaskFiles = row.subtask_files as Record<string, any> | null
+        let hasSubtaskFiles = false
+
+        if (subtaskFiles && typeof subtaskFiles === 'object') {
+          Object.entries(subtaskFiles).forEach(([stId, fInfo]) => {
+            if (fInfo && fInfo.url) {
+              hasSubtaskFiles = true
+              items.push({
+                id: `${row.id}_${stId}`,
+                assignment_id: row.id,
+                task_id: row.task_id,
+                task_title: taskTitle,
+                task_category: taskCategory,
+                teacher_id: row.teacher_id,
+                teacher_name: teacherName,
+                teacher_username: teacherUsername,
+                teacher_avatar: teacherAvatar,
+                teacher_group_name: teacherGroupName,
+                status: row.status,
+                submitted_at: fInfo.submittedAt || row.submitted_at,
+                subtask_id: stId,
+                subtask_title: subtaskTitleMap.get(stId) || `งานย่อย`,
+                file_name: fInfo.fileName || 'ไฟล์ผลงาน',
+                file_url: fInfo.url,
+                file_size: fInfo.fileSize,
+                file_type: fInfo.fileType || 'file',
+                drive_folder_url: fInfo.folderUrl || task?.drive_folder_url || undefined,
+              })
+            }
+          })
+        }
+
+        // 2. Fallback to main submission_url if no subtask files
+        if (!hasSubtaskFiles && row.submission_url) {
+          items.push({
+            id: `${row.id}_main`,
+            assignment_id: row.id,
+            task_id: row.task_id,
+            task_title: taskTitle,
+            task_category: taskCategory,
+            teacher_id: row.teacher_id,
+            teacher_name: teacherName,
+            teacher_username: teacherUsername,
+            teacher_avatar: teacherAvatar,
+            teacher_group_name: teacherGroupName,
+            status: row.status,
+            submitted_at: row.submitted_at,
+            file_name: `เอกสารส่งงาน - ${teacherName}`,
+            file_url: row.submission_url,
+            file_type: row.submission_url.includes('drive.google.com') ? 'drive' : 'link',
+            drive_folder_url: task?.drive_folder_url || undefined,
+          })
+        }
+      })
+    }
+
+    return { data: items, error: null }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch task submitted drive files'
     return { data: null, error: message }
   }
 }

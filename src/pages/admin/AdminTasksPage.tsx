@@ -110,7 +110,7 @@ export const AdminTasksPage: React.FC = () => {
       .then(([tasksRes, groupsRes, usersRes]) => {
         if (tasksRes.data) setTasks(tasksRes.data)
         if (groupsRes.data) setGroups(groupsRes.data)
-        if (usersRes.data) setTeachers(usersRes.data)
+        if (usersRes.data) setTeachers(usersRes.data.filter((u) => u.role !== 'admin'))
         setIsLoading(false)
       })
       .catch((err) => {
