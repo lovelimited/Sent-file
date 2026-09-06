@@ -253,15 +253,28 @@ begin
 
   select username into v_username from public.profiles where id = p_user_id;
 
-  -- Clean up child references safely
+  -- 1. Clean up user interactions and references
+  delete from public.announcement_likes where user_id = p_user_id;
+  delete from public.announcement_comments where author_id = p_user_id;
+  delete from public.announcements where author_id = p_user_id;
+  delete from public.teacher_ratings where teacher_id = p_user_id or admin_id = p_user_id;
+  delete from public.notifications where recipient_id = p_user_id;
+  delete from public.chat_messages where sender_id = p_user_id;
+  delete from public.task_assignments where teacher_id = p_user_id or reviewed_by = p_user_id;
+  delete from public.drive_resources where created_by = p_user_id;
+  delete from public.tasks where created_by = p_user_id;
+  update public.system_settings set updated_by = null where updated_by = p_user_id;
+  update public.activity_logs set user_id = null where user_id = p_user_id;
+
+  -- 2. Auth identity bridges
   delete from auth.identities where user_id = p_user_id;
   delete from public.auth_identities where user_id = p_user_id;
-  delete from public.task_assignments where teacher_id = p_user_id;
-  delete from public.notifications where user_id = p_user_id;
-  delete from public.chat_messages where sender_id = p_user_id;
+
+  -- 3. Profile and auth user
   delete from public.profiles where id = p_user_id;
   delete from auth.users where id = p_user_id;
 
+  -- 4. Activity log for deletion
   insert into public.activity_logs (
     user_id,
     action,
