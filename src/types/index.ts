@@ -37,8 +37,21 @@ export interface SubtaskItem {
   completed?: boolean
 }
 
+export interface SubtaskFileRecord {
+  url: string
+  fileName: string
+  fileSize?: number
+  fileType?: string
+  submittedAt: string
+  driveFileId?: string
+  folderUrl?: string
+}
+
+export type SubtaskFilesMap = Record<string, SubtaskFileRecord>
+
 export interface AppConfig {
   supabaseUrl: string
   supabaseAnonKey: string
   isConfigured: boolean
 }
+

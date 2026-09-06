@@ -1,18 +1,39 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   LogIn,
   Wifi,
   WifiOff,
   Megaphone,
+  Upload,
+  Clock,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 import { AnnouncementFeed } from '@/components/feed/AnnouncementFeed'
+import { QuickSubmitModal } from '@/components/tasks/QuickSubmitModal'
+import { fetchTeacherTasks } from '@/services/taskService'
 
 export const HomePage: React.FC = () => {
-  const { isAuthenticated, profile, role } = useAuth()
+  const { isAuthenticated, profile, role, user } = useAuth()
   const { isOnline } = useNetworkStatus()
+  const [isQuickSubmitOpen, setIsQuickSubmitOpen] = useState(false)
+  const [pendingTaskCount, setPendingTaskCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      fetchTeacherTasks(user.id).then((res) => {
+        if (res.data) {
+          const pending = res.data.filter(
+            (t) => t.status === 'pending' || t.status === 'in_progress' || t.status === 'rejected'
+          ).length
+          setPendingTaskCount(pending)
+        }
+      })
+    }
+  }, [isAuthenticated, user?.id])
 
   return (
     <div className="space-y-4">
@@ -98,7 +119,57 @@ export const HomePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Facebook-Style Announcement Feed (ข้อ 7, 9) */}
+      {/* Prominent Quick Submit Hero Card - Top of Home Page */}
+      {isAuthenticated && (
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 p-4 sm:p-5 text-white shadow-md">
+          {/* Decorative background circle */}
+          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-xl pointer-events-none" />
+          <div className="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-teal-400/20 blur-xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-semibold backdrop-blur-xs">
+                  <Sparkles className="h-3 w-3 text-amber-300" />
+                  <span>ระบบส่งงานรุ่นใหม่</span>
+                </span>
+                {pendingTaskCount !== null && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 text-slate-900 font-bold px-2.5 py-0.5 text-[11px] shadow-2xs">
+                    <Clock className="h-3 w-3" />
+                    <span>มีภาระงานที่ต้องส่ง: {pendingTaskCount} รายการ</span>
+                  </span>
+                )}
+              </div>
+              <h2 className="text-lg sm:text-xl font-extrabold tracking-tight">
+                📤 ส่งไฟล์งาน / ภาระงานด่วน (Quick File Submit)
+              </h2>
+              <p className="text-xs sm:text-sm text-emerald-100 max-w-2xl leading-relaxed">
+                ลากไฟล์จากเครื่องคอมพิวเตอร์เข้าได้ทันที ไม่ต้องก๊อปลิงก์ • ส่งแยกทีละงานย่อยได้ พร้อมแสดงสถานะเปอร์เซ็นต์แบบเรียลไทม์ และจัดเก็บเข้า Google Drive โรงเรียนอัตโนมัติ
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsQuickSubmitOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs sm:text-sm font-bold text-emerald-800 shadow-lg hover:bg-emerald-50 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+              >
+                <Upload className="h-4 w-4 text-emerald-600" />
+                <span>🚀 กดส่งไฟล์งานทันที</span>
+              </button>
+              <Link
+                to="/tasks"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/30 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white hover:bg-white/20 transition-all cursor-pointer backdrop-blur-xs"
+              >
+                <span>ภาระงานทั้งหมด</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Facebook-Style Announcement Feed */}
       {isAuthenticated && (
         <div className="space-y-4">
           <div className="max-w-2xl mx-auto flex items-center justify-between px-1">
@@ -112,6 +183,24 @@ export const HomePage: React.FC = () => {
           <AnnouncementFeed previewCount={0} />
         </div>
       )}
+
+      {/* Quick Submit Modal */}
+      <QuickSubmitModal
+        isOpen={isQuickSubmitOpen}
+        onClose={() => setIsQuickSubmitOpen(false)}
+        onSubmitted={() => {
+          if (user?.id) {
+            fetchTeacherTasks(user.id).then((res) => {
+              if (res.data) {
+                const pending = res.data.filter(
+                  (t) => t.status === 'pending' || t.status === 'in_progress' || t.status === 'rejected'
+                ).length
+                setPendingTaskCount(pending)
+              }
+            })
+          }
+        }}
+      />
     </div>
   )
 }

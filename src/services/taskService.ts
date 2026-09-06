@@ -292,6 +292,111 @@ export async function submitTask(
   }
 }
 
+export interface SubmitSubtaskWorkPayload {
+  assignmentId: string
+  subtaskId?: string
+  fileInfo: {
+    url: string
+    fileName: string
+    fileSize?: number
+    fileType?: string
+    driveFileId?: string
+    folderUrl?: string
+  }
+  note?: string
+  teacherId: string
+  allSubtaskCount?: number
+}
+
+/**
+ * Submit file for a specific subtask or the main task
+ */
+export async function submitSubtaskWork(
+  payload: SubmitSubtaskWorkPayload
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { assignmentId, subtaskId, fileInfo, note, teacherId, allSubtaskCount } = payload
+
+    // 1. Fetch current assignment data
+    const { data: current, error: fetchErr } = await supabase
+      .from('task_assignments')
+      .select('id, task_id, teacher_id, completed_subtask_ids, subtask_files, tasks(subtasks)')
+      .eq('id', assignmentId)
+      .single()
+
+    if (fetchErr || !current) {
+      return { success: false, error: fetchErr?.message || 'ไม่พบภาระงานที่ระบุ' }
+    }
+
+    const currentFiles = (current.subtask_files as Record<string, any>) || {}
+    let currentCompleted = Array.isArray(current.completed_subtask_ids)
+      ? [...current.completed_subtask_ids]
+      : []
+
+    if (subtaskId) {
+      currentFiles[subtaskId] = {
+        url: fileInfo.url,
+        fileName: fileInfo.fileName,
+        fileSize: fileInfo.fileSize,
+        fileType: fileInfo.fileType,
+        driveFileId: fileInfo.driveFileId,
+        folderUrl: fileInfo.folderUrl,
+        submittedAt: new Date().toISOString(),
+      }
+      if (!currentCompleted.includes(subtaskId)) {
+        currentCompleted.push(subtaskId)
+      }
+    }
+
+    // Determine status: if total subtasks defined and all completed -> 'submitted', else 'in_progress'
+    const totalSubtasks = allSubtaskCount ?? (Array.isArray(current.tasks?.subtasks) ? current.tasks.subtasks.length : 0)
+    let newStatus: AssignmentStatus = 'submitted'
+    if (totalSubtasks > 0 && currentCompleted.length < totalSubtasks) {
+      newStatus = 'in_progress'
+    }
+
+    const updateData: any = {
+      subtask_files: currentFiles,
+      completed_subtask_ids: currentCompleted,
+      status: newStatus,
+      submission_url: fileInfo.url,
+      submitted_at: new Date().toISOString(),
+    }
+
+    if (note && note.trim()) {
+      updateData.submission_note = note.trim()
+    }
+
+    const { error: updateErr } = await supabase
+      .from('task_assignments')
+      .update(updateData)
+      .eq('id', assignmentId)
+
+    if (updateErr) {
+      return { success: false, error: updateErr.message }
+    }
+
+    // Log activity
+    await supabase.from('activity_logs').insert({
+      user_id: teacherId,
+      action: 'submit_subtask_work',
+      target_type: 'task_assignment',
+      target_id: assignmentId,
+      details: {
+        task_id: current.task_id,
+        subtask_id: subtaskId || 'main',
+        file_name: fileInfo.fileName,
+        new_status: newStatus,
+      },
+    })
+
+    return { success: true }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to submit subtask file'
+    return { success: false, error: message }
+  }
+}
+
 /**
  * Admin reviews and approves or requests revision on a teacher submission
  */

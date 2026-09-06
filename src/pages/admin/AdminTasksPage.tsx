@@ -19,6 +19,7 @@ import {
   Search,
   FolderOpen,
   Users,
+  FileText,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import type { TaskPriority, UserGroup, SubtaskItem } from '@/types/index'
@@ -1029,7 +1030,7 @@ export const AdminTasksPage: React.FC = () => {
 
                       {/* Submission Content */}
                       {isSubmitted ? (
-                        <div className="rounded-xl bg-white p-3 text-xs space-y-2 border border-slate-200">
+                        <div className="rounded-xl bg-white p-3 text-xs space-y-2.5 border border-slate-200">
                           {sub.submission_note && (
                             <div>
                               <span className="text-slate-500 font-medium">บันทึกของครู: </span>
@@ -1037,7 +1038,33 @@ export const AdminTasksPage: React.FC = () => {
                             </div>
                           )}
 
-                          {sub.submission_url && (
+                          {/* Subtask Files Breakdown */}
+                          {sub.subtask_files && Object.keys(sub.subtask_files).length > 0 ? (
+                            <div className="space-y-1.5 pt-1 border-t border-slate-100">
+                              <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                                <span>ไฟล์งานแยกตามงานย่อย ({Object.keys(sub.subtask_files).length} ไฟล์):</span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                {Object.entries(sub.subtask_files).map(([sId, fileInfo]: [string, any]) => (
+                                  <a
+                                    key={sId}
+                                    href={fileInfo.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-between p-2 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 transition-colors text-xs group"
+                                  >
+                                    <div className="flex items-center gap-1.5 truncate">
+                                      <FileText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                      <span className="truncate font-medium text-emerald-950 group-hover:underline">
+                                        {fileInfo.fileName}
+                                      </span>
+                                    </div>
+                                    <ExternalLink className="h-3 w-3 text-emerald-700 shrink-0 ml-1" />
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          ) : sub.submission_url ? (
                             <div className="flex items-center gap-2">
                               <span className="text-slate-500 font-medium">ไฟล์/ลิงก์ผลงาน: </span>
                               <a
@@ -1050,13 +1077,33 @@ export const AdminTasksPage: React.FC = () => {
                                 <ExternalLink className="h-3 w-3 shrink-0" />
                               </a>
                             </div>
-                          )}
+                          ) : null}
 
-                          {sub.submitted_at && (
-                            <p className="text-[10px] text-slate-400">
-                              ส่งเมื่อ: {new Date(sub.submitted_at).toLocaleString('th-TH')}
-                            </p>
-                          )}
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 text-[10px] text-slate-400">
+                            {sub.submitted_at && (
+                              <span>ส่งเมื่อ: {new Date(sub.submitted_at).toLocaleString('th-TH')}</span>
+                            )}
+                            {/* Teacher Google Drive Folder if available */}
+                            {(() => {
+                              const files = (sub.subtask_files as Record<string, any>) || {}
+                              const firstFile = Object.values(files)[0]
+                              const folderUrl = firstFile?.folderUrl
+                              if (folderUrl) {
+                                return (
+                                  <a
+                                    href={folderUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline"
+                                  >
+                                    <FolderOpen className="h-3 w-3" />
+                                    <span>เปิดโฟลเดอร์ Google Drive ของครูท่านนี้ ↗</span>
+                                  </a>
+                                )
+                              }
+                              return null
+                            })()}
+                          </div>
                         </div>
                       ) : (
                         <div className="text-[11px] text-slate-400 italic">

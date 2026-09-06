@@ -15,7 +15,8 @@ create or replace function public.admin_create_user(
   p_name text,
   p_role text default 'teacher',
   p_group_id uuid default null,
-  p_password text default 'Teacher1234!'
+  p_password text default '123456',
+  p_nickname text default null
 )
 returns jsonb
 language plpgsql
@@ -23,123 +24,90 @@ security definer
 set search_path = public, extensions, auth
 as $$
 declare
-  v_caller_id uuid := auth.uid();
+  v_user_id uuid;
+  v_email text;
   v_clean_username text;
-  v_new_user_id uuid;
-  v_internal_email text;
-  v_encrypted_pw text;
+  v_role user_role;
 begin
   -- Verify admin privileges
-  if not public.is_admin() then
-    raise exception 'Unauthorized: เฉพาะผู้ดูแลระบบ (Admin) เท่านั้น';
+  if not exists (
+    select 1 from public.profiles where id = auth.uid() and role = 'admin'
+  ) then
+    return jsonb_build_object('error', 'Unauthorized: เฉพาะผู้ดูแลระบบ (Admin) เท่านั้น');
   end if;
 
   v_clean_username := lower(trim(p_username));
-  if v_clean_username is null or length(v_clean_username) < 3 then
-    raise exception 'ชื่อผู้ใช้ต้องมีความยาวอย่างน้อย 3 ตัวอักษร';
+  if length(v_clean_username) < 3 then
+    return jsonb_build_object('error', 'ชื่อผู้ใช้ต้องมีความยาวอย่างน้อย 3 ตัวอักษร');
   end if;
 
-  if length(p_password) < 6 then
-    raise exception 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร';
+  -- Check if username already exists in profiles
+  if exists (
+    select 1 from public.profiles where username = v_clean_username
+  ) then
+    return jsonb_build_object('error', 'ชื่อผู้ใช้ "' || v_clean_username || '" มีอยู่ในระบบแล้ว');
   end if;
 
-  -- Check if username already exists in auth_identities or profiles
-  if exists (select 1 from public.auth_identities where username = v_clean_username) or
-     exists (select 1 from public.profiles where username = v_clean_username) then
-    raise exception 'ชื่อผู้ใช้งาน "%" มีอยู่ในระบบแล้ว', v_clean_username;
+  v_email := v_clean_username || '@school.local';
+
+  -- Clean up any ghost record in auth.users if previously orphaned
+  delete from auth.users where email = v_email;
+
+  v_user_id := gen_random_uuid();
+  if p_role = 'admin' then
+    v_role := 'admin'::user_role;
+  else
+    v_role := 'teacher'::user_role;
   end if;
 
-  v_new_user_id := gen_random_uuid();
-  v_internal_email := v_clean_username || '@school.local';
-  v_encrypted_pw := extensions.crypt(p_password, extensions.gen_salt('bf'));
-
-  -- Insert into auth.users (which triggers handle_new_user and creates profile + auth_identity)
+  -- Insert into auth.users (trigger on_auth_user_created will create profile + auth_identity)
   insert into auth.users (
-    id,
-    instance_id,
-    aud,
-    role,
-    email,
+    id, instance_id, email,
     encrypted_password,
     email_confirmed_at,
-    confirmed_at,
-    raw_app_meta_data,
     raw_user_meta_data,
-    is_super_admin,
-    created_at,
-    updated_at,
-    is_sso_user,
-    is_anonymous,
-    confirmation_token,
-    recovery_token,
-    email_change_token_new,
-    email_change,
-    reauthentication_token,
-    phone_change,
-    phone_change_token,
-    email_change_token_current,
-    email_change_confirm_status
+    raw_app_meta_data,
+    role, aud,
+    confirmation_token, recovery_token, email_change_token_new,
+    email_change, reauthentication_token, phone_change,
+    phone_change_token, email_change_token_current, email_change_confirm_status,
+    created_at, updated_at
   ) values (
-    v_new_user_id,
-    '00000000-0000-0000-0000-000000000000'::uuid,
-    'authenticated',
-    'authenticated',
-    v_internal_email,
-    v_encrypted_pw,
+    v_user_id,
+    '00000000-0000-0000-0000-000000000000',
+    v_email,
+    crypt(p_password, gen_salt('bf')),
     now(),
-    now(),
+    jsonb_build_object('username', v_clean_username, 'name', trim(p_name), 'role', p_role, 'nickname', trim(p_nickname)),
     '{"provider":"email","providers":["email"]}'::jsonb,
-    jsonb_build_object(
-      'username', v_clean_username,
-      'name', trim(p_name),
-      'role', case when p_role = 'admin' then 'admin' else 'teacher' end
-    ),
-    null,
-    now(),
-    now(),
-    false,
-    false,
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    0
+    'authenticated', 'authenticated',
+    '', '', '', '', '', '', '', '', 0,
+    now(), now()
   );
 
-  -- Insert into auth.identities for GoTrue email provider lookup
+  -- Ensure identity exists
   insert into auth.identities (
-    id,
-    user_id,
-    identity_data,
-    provider,
-    provider_id,
-    created_at,
-    updated_at
+    id, user_id, provider_id,
+    identity_data, provider,
+    last_sign_in_at, created_at, updated_at
   ) values (
-    gen_random_uuid(),
-    v_new_user_id,
-    jsonb_build_object(
-      'sub', v_new_user_id::text,
-      'email', v_internal_email,
-      'email_verified', true,
-      'phone_verified', false
-    ),
+    gen_random_uuid(), v_user_id, v_user_id::text,
+    jsonb_build_object('sub', v_user_id::text, 'email', v_email, 'email_verified', true, 'phone_verified', false),
     'email',
-    v_new_user_id::text,
-    now(),
-    now()
-  );
+    now(), now(), now()
+  )
+  on conflict (provider, provider_id) do nothing;
 
-  -- Update group_id if provided
-  if p_group_id is not null then
-    update public.profiles
-    set group_id = p_group_id
-    where id = v_new_user_id;
-  end if;
+  -- Upsert profile with full details
+  insert into public.profiles (id, username, name, nickname, role, group_id, active)
+  values (v_user_id, v_clean_username, trim(p_name), trim(p_nickname), v_role, p_group_id, true)
+  on conflict (id) do update set
+    username = excluded.username,
+    name = excluded.name,
+    nickname = excluded.nickname,
+    role = excluded.role,
+    group_id = excluded.group_id,
+    active = true;
 
   -- Log admin action
   insert into public.activity_logs (
@@ -149,18 +117,17 @@ begin
     target_id,
     details
   ) values (
-    v_caller_id,
+    auth.uid(),
     'create_user',
     'profile',
-    v_new_user_id,
+    v_user_id,
     jsonb_build_object('username', v_clean_username, 'name', trim(p_name), 'role', p_role)
   );
 
-  return jsonb_build_object(
-    'success', true,
-    'user_id', v_new_user_id,
-    'username', v_clean_username
-  );
+  return jsonb_build_object('success', true, 'user_id', v_user_id, 'username', v_clean_username);
+exception
+  when others then
+    return jsonb_build_object('error', sqlerrm);
 end;
 $$;
 

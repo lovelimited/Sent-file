@@ -1,33 +1,30 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   CheckSquare,
-  Clock,
   Send,
-  AlertCircle,
   X,
   Loader2,
   Calendar,
   MessageSquare,
   ExternalLink,
   Printer,
-  Upload,
   FileText,
   FolderOpen,
   CheckCircle2,
   Check,
   ListTodo,
   Star,
-  Link as LinkIcon,
   Search,
   Download,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import type { TaskPriority, AssignmentStatus, SubtaskItem } from '@/types/index'
-import { fetchTeacherTasks, submitTask, type TeacherTaskItem } from '@/services/taskService'
+import { fetchTeacherTasks, type TeacherTaskItem } from '@/services/taskService'
 import { fetchTeacherRatings, type TeacherRating } from '@/services/ratingService'
 import { PrintableTaskSlip } from '@/components/tasks/PrintableTaskSlip'
+import { QuickSubmitModal } from '@/components/tasks/QuickSubmitModal'
 import { supabase } from '@/services/supabase'
-import { showConfirm, showToast, showError } from '@/utils/sweetalert'
+import { showError } from '@/utils/sweetalert'
 
 export const TeacherTasksPage: React.FC = () => {
   const { user, isAdmin } = useAuth()
@@ -41,17 +38,10 @@ export const TeacherTasksPage: React.FC = () => {
   // Teacher ratings from admin
   const [myRatings, setMyRatings] = useState<TeacherRating[]>([])
 
-  // Modal states (ข้อ 1 & ข้อ 5)
+  // Modal states
   const [viewingTask, setViewingTask] = useState<TeacherTaskItem | null>(null)
   const [selectedTask, setSelectedTask] = useState<TeacherTaskItem | null>(null)
   const [taskToPrint, setTaskToPrint] = useState<TeacherTaskItem | null>(null)
-  const [submissionType, setSubmissionType] = useState<'upload' | 'drive'>('upload')
-  const [submissionNote, setSubmissionNote] = useState('')
-  const [externalDriveUrl, setExternalDriveUrl] = useState('')
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formError, setFormError] = useState<string | null>(null)
 
   const loadTasks = useCallback(() => {
     if (!user?.id) return
@@ -153,85 +143,6 @@ export const TeacherTasksPage: React.FC = () => {
 
   const handleOpenSubmitModal = (item: TeacherTaskItem) => {
     setSelectedTask(item)
-    setSubmissionNote(item.submission_note || '')
-    setFileToUpload(null)
-    setFormError(null)
-    const hasDriveUrl = item.submission_url && item.submission_url.includes('drive.google.com')
-    setExternalDriveUrl(hasDriveUrl ? item.submission_url || '' : '')
-    setSubmissionType(hasDriveUrl ? 'drive' : 'upload')
-  }
-
-  const handleFileDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setFileToUpload(e.dataTransfer.files[0])
-    }
-  }
-
-  const handleSubmitWork = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedTask || !user?.id) return
-    setFormError(null)
-
-    if (!submissionNote.trim() && !fileToUpload && !externalDriveUrl.trim() && !selectedTask.submission_url) {
-      setFormError('กรุณาอัปโหลดไฟล์ หรือระบุลิงก์ Google Drive หรือกรอกบันทึกสรุปงาน')
-      return
-    }
-
-    const confirmed = await showConfirm(
-      'ยืนยันการส่งผลงาน?',
-      `ภาระงาน "${selectedTask.tasks.title}" จะถูกส่งไปยังผู้ดูแลระบบเพื่อตรวจรับ`
-    )
-    if (!confirmed) return
-
-    setIsSubmitting(true)
-
-    let finalFileUrl = submissionType === 'drive'
-      ? externalDriveUrl.trim()
-      : (selectedTask.submission_url || '')
-
-    // If user uploaded a new file
-    if (submissionType === 'upload' && fileToUpload) {
-      try {
-        const fileExt = fileToUpload.name.split('.').pop() || 'dat'
-        const safeName = fileToUpload.name
-          .replace(/\.[^/.]+$/, '')
-          .replace(/[^a-zA-Z0-9_-]/g, '_')
-          .substring(0, 40)
-        const taskId = selectedTask.task_id || selectedTask.tasks?.id || 'task_general'
-        const filePath = `tasks/${taskId}/${user.id}_${Date.now()}_${safeName}.${fileExt}`
-
-        const { error: uploadErr } = await supabase.storage
-          .from('submissions')
-          .upload(filePath, fileToUpload, { upsert: true })
-
-        if (uploadErr) {
-          setIsSubmitting(false)
-          setFormError(`อัปโหลดไฟล์ไม่สำเร็จ: ${uploadErr.message}`)
-          return
-        }
-
-        const { data: publicUrlData } = supabase.storage.from('submissions').getPublicUrl(filePath)
-        finalFileUrl = publicUrlData.publicUrl
-      } catch (err: unknown) {
-        setIsSubmitting(false)
-        setFormError(err instanceof Error ? err.message : 'Upload failed')
-        return
-      }
-    }
-
-    const res = await submitTask(selectedTask.id, submissionNote, finalFileUrl)
-    setIsSubmitting(false)
-
-    if (res.success) {
-      setSelectedTask(null)
-      showToast('ส่งผลงานเรียบร้อยแล้ว รอการตรวจรับจากผู้ดูแลระบบ', 'success')
-      loadTasks()
-    } else {
-      setFormError(res.error || 'เกิดข้อผิดพลาดในการส่งงาน')
-      showError('ไม่สามารถส่งงานได้', res.error)
-    }
   }
 
   const renderPriorityBadge = (priority: TaskPriority) => {
@@ -631,269 +542,17 @@ export const TeacherTasksPage: React.FC = () => {
       )}
 
       {/* ===================================================================== */}
-      {/* Modal: Submit Task (ข้อ 5: แก้ไขบักปุ่มปิด/ส่งงานหลุดจอ และปรับโครงสร้าง) */}
+      {/* Modal: Quick Submit Subtasks & Google Drive */}
       {/* ===================================================================== */}
       {selectedTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh] overflow-hidden">
-            {/* Fixed Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 p-5 bg-white shrink-0">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <Send className="h-5 w-5 text-emerald-600" />
-                  <span>บันทึกการส่งภาระงาน</span>
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5 truncate max-w-md">
-                  {selectedTask.tasks.title}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedTask(null)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg cursor-pointer transition-colors"
-                title="ปิด"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Scrollable Body */}
-            <div className="overflow-y-auto p-5 space-y-4 flex-1">
-              {formError && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              {/* Task Details Info */}
-              {selectedTask.tasks.description && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
-                  <span className="font-semibold text-slate-900">คำชี้แจง: </span>
-                  {selectedTask.tasks.description}
-                </div>
-              )}
-
-              {/* Subtasks Checklist in Modal */}
-              {((selectedTask.tasks.subtasks as unknown as SubtaskItem[]) || []).length > 0 && (
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3 text-xs space-y-1">
-                  <span className="font-bold text-emerald-900 text-[11px]">งานย่อยที่ต้องส่ง ({((selectedTask.tasks.subtasks as unknown as SubtaskItem[]) || []).length} รายการ):</span>
-                  <ul className="list-disc list-inside space-y-0.5 text-slate-600 pl-1 text-[11px]">
-                    {((selectedTask.tasks.subtasks as unknown as SubtaskItem[]) || []).map((st, i) => (
-                      <li key={st.id || i}>{st.title}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Previously Submitted File / URL (If any) */}
-              {selectedTask.submission_url && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 truncate text-xs">
-                    <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <div className="truncate">
-                      <p className="font-bold text-emerald-900">ผลงานที่เคยส่งไว้ในระบบ</p>
-                      <p className="text-[10px] text-emerald-700 truncate">{selectedTask.submission_url}</p>
-                    </div>
-                  </div>
-                  <a
-                    href={selectedTask.submission_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 text-white px-2.5 py-1 text-xs font-semibold hover:bg-emerald-700 transition-colors shrink-0 shadow-2xs"
-                  >
-                    <span>เปิดดูผลงาน</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-              )}
-
-              {/* Method Segmented Toggle: Upload vs Google Drive Link */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  เลือกวิธีส่งเอกสารผลงาน
-                </label>
-                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => setSubmissionType('upload')}
-                    className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      submissionType === 'upload'
-                        ? 'bg-white text-emerald-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Upload className="h-3.5 w-3.5" />
-                    <span>1. อัปโหลดไฟล์จากเครื่อง</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSubmissionType('drive')}
-                    className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      submissionType === 'drive'
-                        ? 'bg-white text-emerald-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <LinkIcon className="h-3.5 w-3.5" />
-                    <span>2. แนบลิงก์ Google Drive</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Mode A: Drag & Drop File Upload */}
-              {submissionType === 'upload' && (
-                <div>
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault()
-                      setIsDragging(true)
-                    }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={handleFileDrop}
-                    className={`relative rounded-2xl border-2 border-dashed p-6 text-center transition-all cursor-pointer ${
-                      isDragging
-                        ? 'border-emerald-500 bg-emerald-50/70'
-                        : 'border-slate-300 hover:border-emerald-400 bg-slate-50/60'
-                    }`}
-                    onClick={() => document.getElementById('file-upload-input')?.click()}
-                  >
-                    <input
-                      id="file-upload-input"
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setFileToUpload(e.target.files[0])
-                        }
-                      }}
-                      accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.png,.jpg,.jpeg,.zip"
-                    />
-
-                    {fileToUpload ? (
-                      <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-emerald-300 shadow-xs">
-                        <div className="flex items-center gap-2.5 text-left truncate">
-                          <FileText className="h-6 w-6 text-emerald-600 shrink-0" />
-                          <div className="truncate">
-                            <p className="text-xs font-bold text-slate-900 truncate">{fileToUpload.name}</p>
-                            <p className="text-[10px] text-slate-500">
-                              {(fileToUpload.size / (1024 * 1024)).toFixed(2)} MB
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setFileToUpload(null)
-                          }}
-                          className="p-1 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-lg cursor-pointer"
-                          title="ลบไฟล์นี้"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        <Upload className="h-7 w-7 text-emerald-600 mx-auto" />
-                        <p className="text-xs font-semibold text-slate-800">
-                          ลากและวางไฟล์ผลงานลงในกล่องนี้ หรือคลิกเพื่อเลือกไฟล์
-                        </p>
-                        <p className="text-[10px] text-slate-500">
-                          รองรับ PDF, Word, Excel, PowerPoint, รูปภาพ หรือ ZIP (ระบบแยกโฟลเดอร์ให้อัตโนมัติ)
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Mode B: Google Drive Link */}
-              {submissionType === 'drive' && (
-                <div className="space-y-2">
-                  {selectedTask.tasks.drive_folder_url ? (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-slate-800">โฟลเดอร์ Google Drive ประจำภาระงานนี้</p>
-                        <p className="text-[11px] text-slate-500">สามารถเปิดโฟลเดอร์เพื่อวางไฟล์ หรือนำลิงก์ผลงานมาวางส่ง</p>
-                      </div>
-                      <a
-                        href={selectedTask.tasks.drive_folder_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                      >
-                        <span>เปิดโฟลเดอร์ Drive</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
-                  ) : null}
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      วาง URL ลิงก์ Google Drive หรือเอกสารออนไลน์
-                    </label>
-                    <input
-                      type="url"
-                      value={externalDriveUrl}
-                      onChange={(e) => setExternalDriveUrl(e.target.value)}
-                      placeholder="https://drive.google.com/file/d/..."
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Submission Note */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  บันทึกการส่งงาน / ข้อความสรุปถึงผู้ตรวจ (ไม่บังคับ)
-                </label>
-                <textarea
-                  rows={3}
-                  value={submissionNote}
-                  onChange={(e) => setSubmissionNote(e.target.value)}
-                  placeholder="เช่น ดำเนินการจัดทำแผนการสอนและใบงานเรียบร้อยแล้ว..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:border-emerald-500 focus:outline-none resize-none"
-                />
-              </div>
-
-              {/* Previous Submission Info */}
-              {selectedTask.submitted_at && (
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-500 pt-1">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>เคยส่งล่าสุดเมื่อ: {new Date(selectedTask.submitted_at).toLocaleString('th-TH')}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Fixed Sticky Footer (ข้อ 5: มองเห็นปุ่มปิดและปุ่มส่งงาน 100% เสมอ) */}
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-200 bg-slate-50 shrink-0">
-              <button
-                type="button"
-                onClick={() => setSelectedTask(null)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                ปิด
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmitWork}
-                disabled={isSubmitting}
-                className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 cursor-pointer transition-colors"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>กำลังส่งงาน...</span>
-                  </>
-                ) : (
-                  <span>ยืนยันการส่งงาน</span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+        <QuickSubmitModal
+          isOpen={!!selectedTask}
+          initialTaskId={selectedTask.id}
+          onClose={() => setSelectedTask(null)}
+          onSubmitted={() => {
+            loadTasks();
+          }}
+        />
       )}
 
       {/* Printable Task Slip Modal */}
@@ -1009,23 +668,42 @@ export const TeacherTasksPage: React.FC = () => {
                     <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 bg-white overflow-hidden shadow-2xs">
                       {subtasksList.map((st, idx) => {
                         const isDone = completedIds.includes(st.id)
+                        const fileInfo = (viewingTask.subtask_files as Record<string, any>)?.[st.id]
                         return (
                           <div
                             key={st.id || idx}
-                            onClick={() => handleToggleSubtask(viewingTask.id, st.id, completedIds)}
-                            className={`flex items-center gap-3 p-3 text-xs cursor-pointer transition-colors ${
+                            className={`p-3 text-xs transition-colors ${
                               isDone ? 'bg-emerald-50/40' : 'hover:bg-slate-50'
                             }`}
                           >
-                            <input
-                              type="checkbox"
-                              checked={isDone}
-                              readOnly
-                              className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                            />
-                            <span className={`font-medium ${isDone ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
-                              {st.title}
-                            </span>
+                            <div className="flex items-center justify-between gap-2">
+                              <div
+                                onClick={() => handleToggleSubtask(viewingTask.id, st.id, completedIds)}
+                                className="flex items-center gap-3 cursor-pointer flex-1"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isDone}
+                                  readOnly
+                                  className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                />
+                                <span className={`font-medium ${isDone ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                                  {st.title}
+                                </span>
+                              </div>
+                              {fileInfo && (
+                                <a
+                                  href={fileInfo.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 border border-emerald-200 hover:bg-emerald-100 shrink-0"
+                                >
+                                  <FileText className="h-3 w-3 text-emerald-600" />
+                                  <span className="truncate max-w-[130px] font-mono">{fileInfo.fileName}</span>
+                                  <ExternalLink className="h-2.5 w-2.5" />
+                                </a>
+                              )}
+                            </div>
                           </div>
                         )
                       })}

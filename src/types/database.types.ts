@@ -219,6 +219,7 @@ export interface Database {
           reviewed_by: string | null
           reviewed_at: string | null
           completed_subtask_ids?: string[] | null
+          subtask_files?: Record<string, { url: string; fileName: string; fileSize?: number; fileType?: string; submittedAt: string; driveFileId?: string; folderUrl?: string }> | null
           created_at: string
           updated_at: string
         }
@@ -234,6 +235,7 @@ export interface Database {
           reviewed_by?: string | null
           reviewed_at?: string | null
           completed_subtask_ids?: string[] | null
+          subtask_files?: Record<string, { url: string; fileName: string; fileSize?: number; fileType?: string; submittedAt: string; driveFileId?: string; folderUrl?: string }> | null
           created_at?: string
           updated_at?: string
         }
@@ -249,6 +251,7 @@ export interface Database {
           reviewed_by?: string | null
           reviewed_at?: string | null
           completed_subtask_ids?: string[] | null
+          subtask_files?: Record<string, { url: string; fileName: string; fileSize?: number; fileType?: string; submittedAt: string; driveFileId?: string; folderUrl?: string }> | null
           created_at?: string
           updated_at?: string
         }
